@@ -1,0 +1,99 @@
+#ifndef TOK
+  #define TOK(x)
+#endif
+
+#ifndef PUNCT
+  #define PUNCT(x, y)
+#endif
+
+#ifndef KEYWORD
+  #define KEYWORD(x, y)
+#endif
+
+#define _KEYWORD(x, y)
+
+TOK(NumberConstant)
+TOK(Identifier)
+TOK(END)
+
+PUNCT(LBrace, "{")
+PUNCT(RBrace, "}")
+PUNCT(LParen, "(")
+PUNCT(RParen, ")")
+PUNCT(LBrack, "[")
+PUNCT(RBrack, "]")
+
+PUNCT(Plus, "+")
+PUNCT(Minus, "-")
+PUNCT(Star, "*")
+PUNCT(Slash, "/")
+PUNCT(Percent, "%")
+PUNCT(Caret, "^")
+PUNCT(Not, "!")
+PUNCT(And, "&")
+PUNCT(Or, "|")
+PUNCT(AndAnd, "&&")
+PUNCT(OrOr, "||")
+PUNCT(Shl, "<<")
+PUNCT(Shr, ">>")
+// PUNCT(PlusEq, "+=")
+// PUNCT(MinusEq, "-=")
+// PUNCT(StarEq, "*=")
+// PUNCT(SlashEq, "/=")
+
+
+PUNCT(Eq, "=")
+PUNCT(EqEq, "==")
+PUNCT(Ne, "!=")
+PUNCT(Gt, ">")
+PUNCT(Lt, "<")
+PUNCT(Ge, ">=")
+PUNCT(Le, "<=")
+
+
+PUNCT(RArrow, "->")
+PUNCT(FatArrow, "=>")
+
+PUNCT(Semi, ";")
+PUNCT(Comma, ",")
+PUNCT(Colon, ":")
+PUNCT(SQuote, "'")
+PUNCT(DQuote, "\"")
+
+KEYWORD(let, "let")
+
+KEYWORD(i8, "i8")
+KEYWORD(i16, "i16")
+KEYWORD(i32, "i32")
+KEYWORD(i64, "i64")
+
+KEYWORD(u8, "u8")
+KEYWORD(u16, "u16")
+KEYWORD(u32, "u32")
+KEYWORD(u64, "u64")
+
+KEYWORD(f32, "f32")
+KEYWORD(f64, "f64")
+
+KEYWORD(bool, "bool")
+KEYWORD(void, "void")
+
+KEYWORD(true, "true")
+KEYWORD(false, "false")
+
+_KEYWORD(decl, "declare")
+_KEYWORD(and, "logical and")
+_KEYWORD(or, "logical or")
+_KEYWORD(let, "let")
+_KEYWORD(as, "as")
+_KEYWORD(for, "for")
+_KEYWORD(while, "while")
+_KEYWORD(print, "print")
+_KEYWORD(if, "if")
+_KEYWORD(else, "else")
+_KEYWORD(func, "func")
+_KEYWORD(return, "return")
+
+#undef PUNCT
+#undef KEYWORD
+#undef TOK
