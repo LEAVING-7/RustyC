@@ -5,11 +5,11 @@ add_executable(
 )
 
 target_link_libraries(rusty_c 
-  PRIVATE ${llvm_libs}
+  PUBLIC ${llvm_libs}
 )
 
 target_include_directories(rusty_c 
-  PRIVATE ${LLVM_INCLUDE_DIR}
+  PUBLIC ${LLVM_INCLUDE_DIR}
 )
 
 file(GLOB FRONTEND_FILES "frontend/*.cpp")
@@ -17,5 +17,9 @@ file(GLOB FRONTEND_FILES "frontend/*.cpp")
 add_library(frontend OBJECT 
   ${FRONTEND_FILES}
 )
+target_link_libraries(frontend PUBLIC ${llvm_libs})
 
-target_include_directories(frontend PUBLIC  "${CMAKE_CURRENT_LIST_DIR}")
+target_include_directories(frontend 
+  PUBLIC "${CMAKE_CURRENT_LIST_DIR}" 
+  PUBLIC ${LLVM_INCLUDE_DIR}
+)

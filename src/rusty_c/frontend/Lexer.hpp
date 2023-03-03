@@ -1,4 +1,5 @@
 #pragma once
+#include "Diagnostic.hpp"
 #include "Token.hpp"
 #include "common.hpp"
 #include <cassert>
@@ -46,16 +47,21 @@ public:
   char const* mLineHead;
   u32 mLine;
   u32 mColumn;
+  DiagnosticsEngine& mDiags;
 
 public:
-  Lexer(std::string_view buffer)
-      : mCursor(buffer.data(), buffer.data() + buffer.size()), mLine(1), mColumn(0), mLineHead(buffer.data())
+  Lexer(std::string_view buffer, DiagnosticsEngine& diag)
+      : mCursor(buffer.data(), buffer.data() + buffer.size()), mLine(1), mColumn(0), mLineHead(buffer.data()),
+        mDiags(diag)
   {
   }
 
   auto tokenize() -> std::vector<Token>;
 
 private:
+  auto getLoc() -> SMLoc { return SMLoc::getFromPointer(mCursor.curr()); }
+
+  void skipUntil(std::function<bool(char)> &&fn);
   auto nextToken() -> Token;
   auto skipWhiteSpace();
 

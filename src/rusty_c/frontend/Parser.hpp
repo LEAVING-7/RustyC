@@ -1,30 +1,44 @@
+#pragma once
 #include "common.hpp"
 
 #include "Lexer.hpp"
+#include "Sema/Sema.hpp"
 #include "Syntax.hpp"
 
 class Parser {
   Cursor<Token*> mCursor;
+  Sema mSema;
 
 public:
-  Parser(std::vector<Token>& token) : mCursor(token.data(), token.data() + token.size()) {}
+  Parser(std::vector<Token>& token, DiagnosticsEngine& diags)
+      : mCursor(token.data(), token.data() + token.size()), mSema(diags)
+  {
+  }
 
 public:
   auto parseExpr(TokenKind end) -> std::unique_ptr<Expr>;
+
   auto parseExprWithBlock(TokenKind end) -> std::unique_ptr<ExprWithBlock>;
+  auto parseBlockExpr() -> std::unique_ptr<BlockExpr>;
+  auto parseIfExpr() -> std::unique_ptr<IfExpr>;
+  auto parseLoopExpr() -> std::unique_ptr<LoopExpr>;
+  auto parseInfiniteLoopExpr() -> std::unique_ptr<InfiniteLoopExpr>;
+  auto parsePredicateLoopExpr() -> std::unique_ptr<PredicateLoopExpr>;
 
   auto parseExprWithoutBlock(TokenKind end) -> std::unique_ptr<ExprWithoutBlock>;
   auto parseLiteralExpr() -> std::unique_ptr<LiteralExpr>;
   auto parseNegationExpr(TokenKind end) -> std::unique_ptr<NegationExpr>;
+  bool mIsParsingOperatorExpr = false;
   auto parseOperatorExpr(TokenKind end) -> std::unique_ptr<ExprWithoutBlock>;
+  auto parseGroupedExpr(TokenKind end) -> std::unique_ptr<GroupedExpr>;
 
   auto parseBinaryOp(TokenKind end) -> std::unique_ptr<ExprWithoutBlock> { return parseBinaryOp(end, -1); }
   auto parseBinaryOp(TokenKind end, i32 ptp) -> std::unique_ptr<ExprWithoutBlock>;
 
-  auto parseGroupedExpr(TokenKind end) -> std::unique_ptr<GroupedExpr>;
-
-  auto parseStmt() -> std::unique_ptr<Stmt>;
+  auto parseStmts() -> std::vector<std::unique_ptr<Stmt>>;
+  auto parseStmt(TokenKind end) -> std::unique_ptr<Stmt>;
   auto parseLetStmt() -> std::unique_ptr<LetStmt>;
+  auto parseExprStmt(TokenKind end) -> std::unique_ptr<ExprStmt>;
 
   auto expect(TokenKind type) -> bool;
   auto consume(TokenKind type) -> bool;

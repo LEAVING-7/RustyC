@@ -13,4 +13,5 @@ enum TokenKind : u16 {
 
 using KwMapT = std::unordered_map<std::string_view, TokenKind>;
 auto GetKwMap() -> KwMapT const&;
+
 auto TokenKindToString(TokenKind type) -> char const*;

@@ -14,6 +14,7 @@
 
 TOK(NumberConstant)
 TOK(Identifier)
+TOK(UNKNOWN)
 TOK(END)
 
 PUNCT(LBrace, "{")
@@ -61,6 +62,12 @@ PUNCT(SQuote, "'")
 PUNCT(DQuote, "\"")
 
 KEYWORD(let, "let")
+KEYWORD(loop, "loop")
+KEYWORD(if, "if")
+KEYWORD(else, "else")
+KEYWORD(while, "while")
+KEYWORD(for, "for")
+
 
 KEYWORD(i8, "i8")
 KEYWORD(i16, "i16")
@@ -81,18 +88,7 @@ KEYWORD(void, "void")
 KEYWORD(true, "true")
 KEYWORD(false, "false")
 
-_KEYWORD(decl, "declare")
-_KEYWORD(and, "logical and")
-_KEYWORD(or, "logical or")
-_KEYWORD(let, "let")
-_KEYWORD(as, "as")
-_KEYWORD(for, "for")
-_KEYWORD(while, "while")
-_KEYWORD(print, "print")
-_KEYWORD(if, "if")
-_KEYWORD(else, "else")
-_KEYWORD(func, "func")
-_KEYWORD(return, "return")
+
 
 #undef PUNCT
 #undef KEYWORD

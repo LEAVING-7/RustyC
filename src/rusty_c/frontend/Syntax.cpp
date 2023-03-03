@@ -102,52 +102,230 @@ auto ComparisonExpr::GetPrec(Kind type) -> i32
   }
 }
 
+void StmtVisitor::visitStmt(Stmt* stmt)
+{
+  switch (stmt->mType) {
+  case Stmt::Type::Item:
+    assert(0);
+    break;
+  case Stmt::Type::Let:
+    this->visit(stmt->as<LetStmt>());
+    break;
+  case Stmt::Type::Expression:
+    this->visit(stmt->as<ExprStmt>());
+    break;
+  }
+}
 
-void ExprVisitor::expr(Expr* expr)
+void ExprVisitor::visitExpr(Expr* expr)
 {
   switch (expr->mType) {
   case Expr::Type::WithBlock:
-    this->exprWithBlock(expr->as<ExprWithBlock>());
+    this->visitExprWithBlock(expr->as<ExprWithBlock>());
     break;
   case Expr::Type::WithoutBlock:
-    this->exprWithoutBlock(expr->as<ExprWithoutBlock>());
+    this->visitExprWithoutBlock(expr->as<ExprWithoutBlock>());
     break;
   }
 }
-void ExprVisitor::exprWithoutBlock(ExprWithoutBlock* expr)
+
+void ExprVisitor::visitExprWithoutBlock(ExprWithoutBlock* expr)
 {
   switch (expr->mType) {
   case ExprWithoutBlock::Type::Literal:
-    this->literalExpr(expr->as<LiteralExpr>());
+    this->visit(expr->as<LiteralExpr>());
     break;
   case ExprWithoutBlock::Type::Grouped:
-    this->groupedExpr(expr->as<GroupedExpr>());
+    this->visit(expr->as<GroupedExpr>());
     break;
   case ExprWithoutBlock::Type::Operator:
-    this->operatorExpr(expr->as<OperatorExpr>());
+    this->visitOperatorExpr(expr->as<OperatorExpr>());
     break;
   }
 }
 
-void ExprVisitor::operatorExpr(OperatorExpr* expr)
+void ExprVisitor::visitOperatorExpr(OperatorExpr* expr)
 {
   switch (expr->mType) {
   case OperatorExpr::Type::ArithmeticOrLogical:
-    this->arithmeticOrLogicalExpr(expr->as<ArithmeticOrLogicalExpr>());
+    this->visit(expr->as<ArithmeticOrLogicalExpr>());
     break;
   case OperatorExpr::Type::Negation:
-    this->negationExpr(expr->as<NegationExpr>());
+    this->visit(expr->as<NegationExpr>());
     break;
   case OperatorExpr::Type::Comparison:
-    this->comparisonExpr(expr->as<ComparisonExpr>());
+    this->visit(expr->as<ComparisonExpr>());
+    break;
+  case OperatorExpr::Type::Assignment:
+    this->visit(expr->as<AssignmentExpr>());
     break;
   }
 }
 
-/* void ExprVisitor::literalExpr(LiteralExpr* expr) {}
-void ExprVisitor::groupedExpr(GroupedExpr* expr) {}
-void ExprVisitor::comparisonExpr(ComparisonExpr* expr) {}
-void ExprVisitor::negationExpr(NegationExpr* expr) {}
-void ExprVisitor::arithmeticOrLogicalExpr(ArithmeticOrLogicalExpr* expr) {}
- */
-void ExprVisitor::exprWithBlock(ExprWithBlock* expr) {}
+void ExprVisitor::visitExprWithBlock(ExprWithBlock* expr)
+{
+  switch (expr->mType) {
+  case ExprWithBlock::Type::Block:
+    this->visit(expr->as<BlockExpr>());
+    break;
+  case ExprWithBlock::Type::Loop:
+    this->visitLoopExpr(expr->as<LoopExpr>());
+    break;
+  case ExprWithBlock::Type::If:
+    this->visit(expr->as<IfExpr>());
+    break;
+  case ExprWithBlock::Type::IfLet:
+    assert(0);
+    break;
+  case ExprWithBlock::Type::Match:
+    assert(0);
+    break;
+  }
+}
+
+void ExprVisitor::visitLoopExpr(LoopExpr* expr)
+{
+  switch (expr->mType) {
+  case LoopExpr::Type::InfiniteLoop:
+    this->visit(expr->as<InfiniteLoopExpr>());
+    break;
+  case LoopExpr::Type::PredicateLoop:
+    this->visit(expr->as<PredicateLoopExpr>());
+    break;
+  }
+}
+
+void StringifyExpr::visit(LiteralExpr* expr) { str += ToString(expr->mValue); };
+void StringifyExpr::visit(GroupedExpr* expr)
+{
+  str += '(';
+  this->visitExpr(expr->mExpr.get());
+  str += ')';
+};
+void StringifyExpr::visit(ComparisonExpr* expr)
+{
+  this->visitExpr(expr->mLeft.get());
+  switch (expr->mKind) {
+  case ComparisonExpr::Kind::Eq:
+    str += "==";
+    break;
+  case ComparisonExpr::Kind::Ne:
+    str += "!=";
+    break;
+  case ComparisonExpr::Kind::Gt:
+    str += ">";
+    break;
+  case ComparisonExpr::Kind::Lt:
+    str += "<";
+    break;
+  case ComparisonExpr::Kind::Ge:
+    str += ">=";
+    break;
+  case ComparisonExpr::Kind::Le:
+    str += "<=";
+    break;
+  case ComparisonExpr::Kind::SIZE:
+    assert(0);
+
+    break;
+  }
+  this->visitExpr(expr->mRight.get());
+};
+
+void StringifyExpr::visit(NegationExpr* expr)
+{
+  switch (expr->mKind) {
+  case NegationExpr::Kind::Neg:
+    str += '-';
+    break;
+  case NegationExpr::Kind::Not:
+    str += '!';
+    break;
+  case NegationExpr::Kind::SIZE:
+    assert(0);
+
+    break;
+  }
+  this->visitExpr(expr->mRight.get());
+};
+void StringifyExpr::visit(ArithmeticOrLogicalExpr* expr)
+{
+  this->visitExpr(expr->mLeft.get());
+  switch (expr->mKind) {
+  case ArithmeticOrLogicalExpr::Kind::Add:
+    str += "+";
+    break;
+  case ArithmeticOrLogicalExpr::Kind::Sub:
+    str += "-";
+    break;
+  case ArithmeticOrLogicalExpr::Kind::Mul:
+    str += "*";
+    break;
+  case ArithmeticOrLogicalExpr::Kind::Div:
+    str += "/";
+    break;
+  case ArithmeticOrLogicalExpr::Kind::Rem:
+    str += "%";
+    break;
+  case ArithmeticOrLogicalExpr::Kind::BitAnd:
+    str += "&";
+    break;
+  case ArithmeticOrLogicalExpr::Kind::BitOr:
+    str += "|";
+    break;
+  case ArithmeticOrLogicalExpr::Kind::BitXor:
+    str += "^";
+    break;
+  case ArithmeticOrLogicalExpr::Kind::Shl:
+    str += "<<";
+    break;
+  case ArithmeticOrLogicalExpr::Kind::Shr:
+    str += ">>";
+    break;
+  case ArithmeticOrLogicalExpr::Kind::SIZE:
+    assert(0);
+    break;
+  }
+  this->visitExpr(expr->mRight.get());
+};
+
+void StringifyExpr::visit(AssignmentExpr* expr)
+{
+  this->visitExpr(expr->mLeft.get());
+  str += '=';
+  this->visitExpr(expr->mRight.get());
+}
+
+void StringifyExpr::visit(BlockExpr* expr)
+{
+  str += '{';
+  for (auto& stmt : expr->mStmts) {
+    mStmtVisitor.visitStmt(stmt.get());
+  }
+  this->visitExprWithoutBlock(expr->mReturn.get());
+  str += '{';
+};
+void StringifyExpr::visit(IfExpr* expr)
+{
+  str += "if ";
+  this->visitExpr(expr->mCond.get());
+  str += '{';
+  this->visit(expr->mIf.get());
+  str += '}';
+  if (expr->mElse != nullptr) {
+    str += " else ";
+    this->visitExprWithBlock(expr->mElse.get());
+  }
+}
+
+void StringifyExpr::visit(InfiniteLoopExpr* expr)
+{
+  str += "loop";
+  this->visit(expr->mExpr.get());
+}
+void StringifyExpr::visit(PredicateLoopExpr* expr)
+{
+  str += "while ";
+  this->visitExpr(expr->mCond.get());
+  this->visit(expr->mExpr.get());
+}

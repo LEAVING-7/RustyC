@@ -8,7 +8,6 @@ inline bool IsDecDigit(char c) { return ::isdigit(c); }
 inline bool IsHexDigit(char c) { return ::isxdigit(c); }
 bool IsNDigit(char c, i32 base)
 {
-
   if (base == 2) {
     return IsBinDigit(c);
   } else if (base == 8) {
@@ -24,6 +23,7 @@ bool IsNDigitOrUnderscore(char c, i32 base) { return IsNDigit(c, base) || '_' ==
 
 bool IsLetter(char c) { return ::isalpha(c); }
 bool IsIdentifier(char c) { return IsLetter(c) || c == '_'; }
+bool IsAlnum(char c) { return ::isalnum(c); }
 bool IsPunct(char c)
 {
   return c == '[' || c == ']' || c == '(' || c == ')' || c == '{' || c == '}' || c == '.' || c == '&' || c == '*' ||
@@ -84,60 +84,36 @@ auto Lexer::scanIdentifier() -> Token
 
 auto Lexer::scanIntegerSuffix() -> Lexer::IntegerType
 {
-  if (char ch = mCursor.peek(); ch == 'i') {
-    mCursor.skip();
-    if (char st = mCursor.peek(); st == '8') {
-      mCursor.skip();
+  if (char ch = mCursor.peek(); ch == 'i' || ch == 'u') {
+    auto start = mCursor.curr();
+    std::string_view view{start, 3}; // what if not long enough
+    if (view.starts_with("i8")) {
+      mCursor.skip(2);
       return IntegerType::i8;
-    } else if (st == '1') {
-      mCursor.skip();
-      if (char sc = mCursor.peek(); sc == '6') {
-        mCursor.skip();
-        return IntegerType::i16;
-      }
-      assert(0);
-    } else if (st == '3') {
-      mCursor.skip();
-      if (char sc = mCursor.peek(); sc == '2') {
-        mCursor.skip();
-        return IntegerType::i32;
-      }
-      assert(0);
-    } else if (st == '6') {
-      mCursor.skip();
-      if (char sc = mCursor.peek(); sc == '4') {
-        mCursor.skip();
-        return IntegerType::i64;
-      }
-      assert(0);
-    }
-  } else if (ch == 'u') {
-    mCursor.skip();
-    if (char st = mCursor.peek(); st == '8') {
-      mCursor.skip();
+    } else if (view.starts_with("i16")) {
+      mCursor.skip(3);
+      return IntegerType::i16;
+    } else if (view.starts_with("i32")) {
+      mCursor.skip(3);
+      return IntegerType::i16;
+    } else if (view.starts_with("i64")) {
+      mCursor.skip(3);
+      return IntegerType::i16;
+    } else if (view.starts_with("u8")) {
+      mCursor.skip(2);
       return IntegerType::u8;
-    } else if (st == '1') {
-      mCursor.skip();
-      if (char sc = mCursor.peek(); sc == '6') {
-        mCursor.skip();
-        return IntegerType::u16;
-      }
-      assert(0);
-    } else if (st == '3') {
-      mCursor.skip();
-      if (char sc = mCursor.peek(); sc == '2') {
-        mCursor.skip();
-        return IntegerType::u32;
-      }
-      assert(0);
-    } else if (st == '6') {
-      mCursor.skip();
-      if (char sc = mCursor.peek(); sc == '4') {
-        mCursor.skip();
-        return IntegerType::u64;
-      }
-      assert(0);
+    } else if (view.starts_with("u16")) {
+      mCursor.skip(3);
+      return IntegerType::u16;
+    } else if (view.starts_with("u32")) {
+      mCursor.skip(3);
+      return IntegerType::u32;
+    } else if (view.starts_with("u64")) {
+      mCursor.skip(3);
+      return IntegerType::u64;
     }
+    skipUntil([](char c) { return !IsLetter(c) && !IsDecDigit(c); });
+    mDiags.report(getLoc(), DiagId::ErrInvalidIntegerSuffix, std::string_view(start, mCursor.curr()));
   }
   return IntegerType::None;
 }
@@ -209,21 +185,24 @@ auto Lexer::scanFloat() -> Token
   char* end = nullptr;
   double value = std::strtod(start, &end);
   if (end == nullptr) {
-    assert(0);
+    skipUntil(std::not_fn(IsAlnum));
+    mDiags.report(getLoc(), DiagId::ErrInvalidFloatConstant);
   }
 
   mCursor.skip(std::abs(start - end));
 
   if (char ch = mCursor.peek(); ch == '_') {
-    mCursor.skip();
-    if (mCursor.peek() == 'f' && mCursor.peek(1) == '3' && mCursor.peek(2) == '2') {
+    auto start = mCursor.curr();
+    std::string_view view{start, 3};
+    if (view.starts_with("f32")) {
       mCursor.skip(3);
       return {mLine, mColumn, TokenKind::NumberConstant, (float)value};
-    } else if (mCursor.peek() == 'f' && mCursor.peek(1) == '6' && mCursor.peek(2) == '4') {
+    } else if (view.starts_with("f64")) {
       mCursor.skip(3);
       return {mLine, mColumn, TokenKind::NumberConstant, (double)value};
     } else {
-      assert(0);
+      skipUntil([](char c) { return !IsAlnum(c); });
+      mDiags.report(getLoc(), DiagId::ErrInvalidFloatSuffix, std::string_view{start, mCursor.curr()});
     }
   }
   return {mLine, mColumn, TokenKind::NumberConstant, (double)value};
@@ -405,4 +384,11 @@ auto Lexer::scanPunct() -> Token
   }
 
   return {mLine, mColumn, type};
+}
+
+void Lexer::skipUntil(std::function<bool(char)>&& pred)
+{
+  while (mCursor.isEnd() && pred(mCursor.peek())) {
+    mCursor.skip();
+  }
 }

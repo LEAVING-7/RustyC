@@ -1,0 +1,12 @@
+#ifndef DIAG
+#define DIAG(ID, Level, Msg)
+#endif
+
+DIAG(ErrInvalidIntegerSuffix, Error, "Invalid suffix '{0}' on integer constant")
+DIAG(ErrInvalidFloatSuffix, Error, "Invalid suffix '{0}' on float constant")
+DIAG(ErrInvalidFloatConstant, Error, "Invalid float constant")
+
+
+DIAG(ErrSymDeclare, Error, "Symbol '{0}' already declared")
+DIAG(ErrSymUndefined, Error, "Symbol '{0}' undefined")
+#undef DIAG
