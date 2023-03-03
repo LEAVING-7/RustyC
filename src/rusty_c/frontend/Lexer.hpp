@@ -55,13 +55,13 @@ public:
         mDiags(diag)
   {
   }
-
+  ~Lexer() = default;
   auto tokenize() -> std::vector<Token>;
 
 private:
   auto getLoc() -> SMLoc { return SMLoc::getFromPointer(mCursor.curr()); }
 
-  void skipUntil(std::function<bool(char)> &&fn);
+  void skipUntil(std::function<bool(char)>&& fn);
   auto nextToken() -> Token;
   auto skipWhiteSpace();
 

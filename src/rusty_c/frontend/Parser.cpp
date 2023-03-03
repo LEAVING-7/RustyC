@@ -1,69 +1,34 @@
 #include "Parser.hpp"
 #include <iostream>
 
-template <TokenMap T>
-bool IsToken(TokenKind tok)
-{
-  return T::MapOp(tok) != T::Kind::SIZE;
-}
-bool IsBinaryExpr(TokenKind tok)
-{
-  return IsToken<ArithmeticOrLogicalExpr>(tok) || IsToken<ComparisonExpr>(tok) || tok == PunEq;
-}
-bool IsUnaryExpr(TokenKind tok) { return IsToken<NegationExpr>(tok); }
+#define consume(tok) this->consume1(tok, std::source_location::current())
+#define expect(tok) this->expect1(tok, std::source_location::current())
 
-auto Parser::parseExprStmt(TokenKind end) -> std::unique_ptr<ExprStmt>
+bool IsUnaryTok(TokenKind tok) { return UnaryExpr::MapKind(tok) != UnaryExpr::Kind::SIZE; }
+
+auto Parser::parseExprStmt() -> std::unique_ptr<ExprStmt>
 {
   if (auto& tok = mCursor.peek(); tok.isOneOf(PunLBrace, Kwif, Kwwhile, Kwloop)) {
-    return std::make_unique<ExprStmt>(parseExprWithBlock(end));
+    auto ret = std::make_unique<ExprStmt>(parseExprWithBlock(PunSemi));
+    consume(PunSemi);
+    return ret;
   } else {
-    return std::make_unique<ExprStmt>(parseExprWithoutBlock(end));
+    auto ret = std::make_unique<ExprStmt>(parseExprWithoutBlock(PunSemi));
+    consume(PunSemi);
+    return ret;
   }
 }
 
 auto Parser::parseExpr(TokenKind end) -> std::unique_ptr<Expr>
 {
-  if (mCursor.peek().isOneOf(Kwloop, Kwwhile, PunLBrace)) {
+  if (mCursor.peek().isOneOf(Kwloop, Kwwhile, PunLBrace, Kwif)) {
     return parseExprWithBlock(end);
   } else {
     return parseExprWithoutBlock(end);
   }
 }
 
-auto Parser::parseExprWithoutBlock(TokenKind end) -> std::unique_ptr<ExprWithoutBlock>
-{
-  if (mCursor.peek().is(end)) {
-    return nullptr;
-  }
-  auto& tok = mCursor.peek();
-  auto nextTokType = mCursor.peek(1).getType();
-  if (tok.isOneOf(NumberConstant, Identifier)) {
-    if (!mIsParsingOperatorExpr && IsBinaryExpr(nextTokType) || IsUnaryExpr(nextTokType)) {
-      mIsParsingOperatorExpr = true;
-      auto expr = parseOperatorExpr(end);
-      mIsParsingOperatorExpr = false;
-      return expr;
-    } else {
-      return parseLiteralExpr();
-    }
-  } else if (tok.is(PunLParen)) {
-    return parseGroupedExpr(end);
-  } else if (IsBinaryExpr(tok.getType()) || IsUnaryExpr(tok.getType())) {
-    return parseOperatorExpr(end);
-  } else {
-    assert(0);
-    return {};
-  }
-}
-
-auto Parser::parseNegationExpr(TokenKind end) -> std::unique_ptr<NegationExpr>
-{
-  auto const& tok = mCursor.peek();
-  mCursor.skip();
-  auto ty = NegationExpr::MapOp(tok.getType());
-  auto expr = parseExprWithoutBlock(end);
-  return std::make_unique<NegationExpr>(ty, std::move(expr));
-}
+auto Parser::parseExprWithoutBlock(TokenKind end) -> std::unique_ptr<Expr> { return parseBinaryExpr(end, -1); }
 
 auto Parser::parseLiteralExpr() -> std::unique_ptr<LiteralExpr>
 {
@@ -73,79 +38,57 @@ auto Parser::parseLiteralExpr() -> std::unique_ptr<LiteralExpr>
   return std::make_unique<LiteralExpr>(ty, tok.getValue());
 }
 
-auto Parser::parseOperatorExpr(TokenKind end) -> std::unique_ptr<ExprWithoutBlock>
+auto Parser::parseBinaryExpr(TokenKind end, i32 bp) -> std::unique_ptr<Expr>
 {
-  if (NegationExpr::MapOp(mCursor.peek().getType()) != NegationExpr::Kind::SIZE) {
-    return parseNegationExpr(end);
-  } else {
-    return parseBinaryOp(end);
+  if (mCursor.peek().is(END) && mCursor.peek().getKind() == end) {
+    return nullptr;
   }
-}
+  std::unique_ptr<Expr> left;
 
-auto Parser::parseBinaryOp(TokenKind end, i32 ptp) -> std::unique_ptr<ExprWithoutBlock>
-{
-  auto left = parseExprWithoutBlock(end);
-  if (mCursor.peek().is(END) || mCursor.peek().is(end)) {
-    return left;
+  if (auto tok = mCursor.peek().getKind(); tok == PunLParen) {
+    left = parseGroupedExpr(end);
+  } else if (tok == NumberConstant || tok == Identifier) {
+    left = parseLiteralExpr();
+  } else if (auto kind = UnaryExpr::MapKind(tok); kind != UnaryExpr::Kind::SIZE) {
+    auto [bp] = UnaryExpr::BindingPower(kind); // prefix
+    auto right = parseBinaryExpr(end, bp);
+    left = std::make_unique<UnaryExpr>(kind, std::move(right));
   } else {
-    auto tokTy = mCursor.peek().getType();
-    if (auto op = ArithmeticOrLogicalExpr::MapOp(tokTy); op != ArithmeticOrLogicalExpr::Kind::SIZE) {
-      auto prec = ArithmeticOrLogicalExpr::GetPrec(op);
-      while (prec > ptp) {
-        mCursor.skip();
-        auto right = parseBinaryOp(end, prec);
-        left = std::make_unique<ArithmeticOrLogicalExpr>(op, std::move(left), std::move(right));
-        if (mCursor.peek().is(END) || mCursor.peek().is(end)) {
-          return left;
-        }
-        tokTy = mCursor.peek().getType();
-        op = ArithmeticOrLogicalExpr::MapOp(tokTy);
-        prec = ArithmeticOrLogicalExpr::GetPrec(op);
-      }
-    } else if (auto op = ComparisonExpr::MapOp(tokTy); op != ComparisonExpr::Kind::SIZE) {
-      auto prec = ComparisonExpr::GetPrec(op);
-      while (prec > ptp) {
-        mCursor.skip();
-        auto right = parseBinaryOp(end, prec);
-        left = std::make_unique<ComparisonExpr>(op, std::move(left), std::move(right));
-        if (mCursor.peek().is(END) || mCursor.peek().is(end)) {
-          return left;
-        }
-        tokTy = mCursor.peek().getType();
-        op = ComparisonExpr::MapOp(tokTy);
-        prec = ComparisonExpr::GetPrec(op);
-      }
-    } else if (auto op = PunEq) {
-      auto prec = AssignmentExpr::GetPrec();
-      while (prec > ptp) {
-        mCursor.skip();
-        auto right = parseExpr(end);
-        left = std::make_unique<AssignmentExpr>(std::move(left), std::move(right));
-        if (mCursor.peek().is(END) || mCursor.peek().is(end)) {
-          return left;
-        }
-        tokTy = mCursor.peek().getType();
-        prec = AssignmentExpr::GetPrec();
-      }
-    }
-    return left;
+    assert(0);
   }
+
+  while (!mCursor.peek().is(END) && mCursor.peek().getKind() != end) {
+    auto tokKind = mCursor.peek().getKind();
+    auto op = BinaryExpr::MapKind(tokKind);
+    if (op == BinaryExpr::Kind::SIZE) {
+      assert(0);
+      break;
+    }
+    auto [bpl, bpr] = BinaryExpr::BindingPower(op);
+    if (bpl < bp) {
+      break;
+    }
+    mCursor.skip();
+    auto right = parseBinaryExpr(end, bpr);
+    left = std::make_unique<BinaryExpr>(op, std::move(left), std::move(right));
+  }
+  return left;
 }
 
 auto Parser::parseGroupedExpr(TokenKind end) -> std::unique_ptr<GroupedExpr>
 {
   consume(PunLParen);
-  auto expr = parseOperatorExpr(PunRParen);
+  auto expr = parseExpr(PunRParen);
   consume(PunRParen);
   return std::make_unique<GroupedExpr>(std::move(expr));
 }
 
-auto Parser::parseStmt(TokenKind end) -> std::unique_ptr<Stmt>
+auto Parser::parseStmt() -> std::unique_ptr<Stmt>
 {
   if (mCursor.peek().is(Kwlet)) {
     return parseLetStmt();
   } else {
-    return parseExprStmt(end);
+    return parseExprStmt();
   }
 }
 
@@ -156,7 +99,7 @@ auto Parser::parseLetStmt() -> std::unique_ptr<LetStmt>
   auto name = mCursor.peek().get<std::string>();
   mCursor.skip();
   assert(consume(PunEq));
-  auto expr = parseOperatorExpr(PunSemi);
+  auto expr = parseExpr(PunSemi);
   mCursor.skip(); // skip semicolon
   return std::make_unique<LetStmt>(name, std::move(expr));
 }
@@ -167,6 +110,8 @@ auto Parser::parseExprWithBlock(TokenKind end) -> std::unique_ptr<ExprWithBlock>
     return parseBlockExpr();
   } else if (mCursor.peek().isOneOf(Kwloop, Kwwhile)) {
     return parseLoopExpr();
+  } else if (mCursor.peek().is(Kwif)) {
+    return parseIfExpr();
   }
   assert(0);
   return {};
@@ -177,7 +122,7 @@ auto Parser::parseBlockExpr() -> std::unique_ptr<BlockExpr>
   consume(PunLBrace);
   std::vector<std::unique_ptr<Stmt>> stmts{};
   while (!mCursor.peek().is(PunRBrace)) { // TODO expr without block
-    stmts.push_back(parseStmt(PunRBrace));
+    stmts.push_back(parseStmt());
   }
   consume(PunRBrace);
   return std::make_unique<BlockExpr>(std::move(stmts), nullptr);
@@ -229,29 +174,32 @@ auto Parser::parsePredicateLoopExpr() -> std::unique_ptr<PredicateLoopExpr>
 auto Parser::parseStmts() -> std::vector<std::unique_ptr<Stmt>>
 {
   std::vector<std::unique_ptr<Stmt>> vec{};
-  while (!mCursor.isEnd()) {
-    vec.push_back(parseStmt(PunSemi));
+  while (!mCursor.peek().is(END)) {
+    vec.push_back(parseStmt());
   }
   return vec;
 }
 
-auto Parser::expect(TokenKind type) -> bool
+auto Parser::expect1(TokenKind type, std::source_location loc) -> bool
 {
-  if (mCursor.peek().getType() != type) {
-    error();
-    puts("ji");
+  if (mCursor.peek().getKind() != type) {
+    error(loc);
     return false;
   }
   return true;
 }
-auto Parser::consume(TokenKind type) -> bool
+auto Parser::consume1(TokenKind type, std::source_location loc) -> bool
 {
   if (!expect(type)) {
-    puts("ji");
+    error(loc);
     return false;
   }
   mCursor.skip();
   return true;
 }
 
-void Parser::error() { std::cerr << std::format("Unexpected: {}\n", mCursor.peek().toString()); }
+void Parser::error(std::source_location& loc)
+{
+  std::cerr << std::format("file: {}:{}:{}\nUnexpected: {}\n", loc.file_name(), loc.line(), loc.column(),
+                           mCursor.peek().toString());
+}

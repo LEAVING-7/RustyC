@@ -20,15 +20,19 @@ struct Node {
 //===----------------------------------------------------------------------===//
 
 // make life easier
-#define DEFINE_IDS(...)                                                                                                \
+#define DEFINE_TYPES(...)                                                                                              \
   enum class Type { __VA_ARGS__ };                                                                                     \
   Type const mType;
+
+#define DEFINE_KINDS(...)                                                                                              \
+  enum class Kind { __VA_ARGS__ __VA_OPT__(, ) SIZE };                                                                 \
+  Kind const mKind;
 
 struct Expr;
 
 struct Stmt : public Node {
 public:
-  DEFINE_IDS(Item, Let, Expression);
+  DEFINE_TYPES(Item, Let, Expression);
   IMPL_AS(Stmt);
 
 public:
@@ -70,7 +74,7 @@ struct StmtVisitor {
 
 struct Expr : Node {
 public:
-  DEFINE_IDS(WithBlock, WithoutBlock);
+  DEFINE_TYPES(WithBlock, WithoutBlock);
   IMPL_AS(Expr)
 
 public:
@@ -84,7 +88,7 @@ public:
 
 struct ExprWithoutBlock : Expr {
 public:
-  DEFINE_IDS(Literal, Grouped, Operator);
+  DEFINE_TYPES(Literal, Grouped, Operator);
   IMPL_AS(ExprWithoutBlock);
 
 public:
@@ -131,6 +135,59 @@ concept TokenMap = requires(T expr) {
                    };
 
 struct OperatorExpr : ExprWithoutBlock {
+public:
+  DEFINE_TYPES(Unary, Binary);
+  IMPL_AS(OperatorExpr);
+
+public:
+  OperatorExpr(OperatorExpr::Type type) : ExprWithoutBlock(ExprWithoutBlock::Type::Operator), mType(type) {}
+  ~OperatorExpr() override = default;
+};
+
+struct BinaryExpr : OperatorExpr {
+public:
+  DEFINE_KINDS(
+      // arithmetic and logical
+      Add, Sub, Mul, Div, Rem, BitAnd, BitOr, BitXor, Shl, Shr,
+      // comparison operator
+      Eq, Ne, Gt, Lt, Ge, Le,
+      // assignment
+      Assignment);
+
+public:
+  std::unique_ptr<Expr> mLeft;
+  std::unique_ptr<Expr> mRight;
+
+public:
+  BinaryExpr(BinaryExpr::Kind kind, std::unique_ptr<Expr> left, std::unique_ptr<Expr> right)
+      : OperatorExpr(OperatorExpr::Type::Binary), mKind(kind), mLeft(std::move(left)), mRight(std::move(right))
+  {
+  }
+  ~BinaryExpr() override = default;
+
+  static auto BindingPower(BinaryExpr::Kind kind) -> std::tuple<i32, i32>;
+  static auto MapKind(TokenKind tok) -> BinaryExpr::Kind;
+};
+
+struct UnaryExpr : OperatorExpr {
+public:
+  DEFINE_KINDS(Neg, Not);
+
+public:
+  std::unique_ptr<Expr> mRight;
+
+public:
+  UnaryExpr(UnaryExpr::Kind kind, std::unique_ptr<Expr> right)
+      : OperatorExpr(OperatorExpr::Type::Unary), mKind(kind), mRight(std::move(right))
+  {
+  }
+  ~UnaryExpr() override = default;
+
+  static auto BindingPower(UnaryExpr::Kind kind) -> std::tuple<i32>;
+  static auto MapKind(TokenKind tok) -> UnaryExpr::Kind;
+};
+
+/* struct OperatorExpr : ExprWithoutBlock {
 public:
   DEFINE_IDS(ArithmeticOrLogical, Negation, Comparison, Assignment);
   IMPL_AS(OperatorExpr)
@@ -221,14 +278,14 @@ public:
 
   static auto GetPrec() -> i32 { return 2; }
 };
-
+ */
 //===----------------------------------------------------------------------===//
 // ExprWithBlock
 //===----------------------------------------------------------------------===//
 
 struct ExprWithBlock : Expr {
 public:
-  DEFINE_IDS(Block, Loop, If, IfLet, Match)
+  DEFINE_TYPES(Block, Loop, If, IfLet, Match)
   IMPL_AS(ExprWithBlock);
 
 public:
@@ -265,7 +322,7 @@ public:
 
 struct LoopExpr : ExprWithBlock {
 public:
-  DEFINE_IDS(InfiniteLoop, PredicateLoop);
+  DEFINE_TYPES(InfiniteLoop, PredicateLoop);
   IMPL_AS(LoopExpr);
 
 public:
@@ -289,7 +346,7 @@ public:
 
 public:
   PredicateLoopExpr(std::unique_ptr<Expr> cond, std::unique_ptr<BlockExpr> expr)
-      : LoopExpr(LoopExpr::Type::PredicateLoop)
+      : LoopExpr(LoopExpr::Type::PredicateLoop), mCond(std::move(cond)), mExpr(std::move(expr))
   {
   }
   ~PredicateLoopExpr() override final = default;
@@ -302,10 +359,8 @@ struct ExprVisitor {
   virtual void visitOperatorExpr(OperatorExpr* expr);
   virtual void visit(LiteralExpr* expr) = 0;
   virtual void visit(GroupedExpr* expr) = 0;
-  virtual void visit(ComparisonExpr* expr) = 0;
-  virtual void visit(NegationExpr* expr) = 0;
-  virtual void visit(ArithmeticOrLogicalExpr* expr) = 0;
-  virtual void visit(AssignmentExpr* expr) = 0;
+  virtual void visit(UnaryExpr* expr) = 0;
+  virtual void visit(BinaryExpr* expr) = 0;
 
   virtual void visitExprWithBlock(ExprWithBlock* expr);
   virtual void visitLoopExpr(LoopExpr* expr);
@@ -316,7 +371,7 @@ struct ExprVisitor {
 };
 
 struct StringifyStmt;
-struct StringifyExpr : ExprVisitor {
+struct StringifyExpr final : ExprVisitor {
   std::string& str;
   StringifyExpr(std::string& str, StringifyStmt& stmtVisitor) : str(str), mStmtVisitor(stmtVisitor) {}
 
@@ -325,10 +380,9 @@ private:
 
   void visit(LiteralExpr* expr) override;
   void visit(GroupedExpr* expr) override;
-  void visit(ComparisonExpr* expr) override;
-  void visit(NegationExpr* expr) override;
-  void visit(ArithmeticOrLogicalExpr* expr) override;
-  void visit(AssignmentExpr* expr) override;
+
+  void visit(UnaryExpr* expr) override;
+  void visit(BinaryExpr* expr) override;
 
   void visit(BlockExpr* expr) override;
   void visit(IfExpr* expr) override;
@@ -342,11 +396,17 @@ struct StringifyStmt : StmtVisitor {
 private:
   StringifyExpr mExprVisitor;
 
-  void visit(ExprStmt* stmt) override { mExprVisitor.visitExpr(stmt->mExpr.get()); };
+  void visit(ExprStmt* stmt) override
+  {
+    mExprVisitor.visitExpr(stmt->mExpr.get());
+    str += ';';
+  }
   void visit(LetStmt* stmt) override
   {
     str += "let ";
     str += stmt->mName;
+    str += '=';
     mExprVisitor.visitExpr(stmt->mExpr.get());
+    str += ';';
   };
 };

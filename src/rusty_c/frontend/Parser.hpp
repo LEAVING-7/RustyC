@@ -25,22 +25,20 @@ public:
   auto parseInfiniteLoopExpr() -> std::unique_ptr<InfiniteLoopExpr>;
   auto parsePredicateLoopExpr() -> std::unique_ptr<PredicateLoopExpr>;
 
-  auto parseExprWithoutBlock(TokenKind end) -> std::unique_ptr<ExprWithoutBlock>;
+  auto parseExprWithoutBlock(TokenKind end) -> std::unique_ptr<Expr>;
   auto parseLiteralExpr() -> std::unique_ptr<LiteralExpr>;
-  auto parseNegationExpr(TokenKind end) -> std::unique_ptr<NegationExpr>;
-  bool mIsParsingOperatorExpr = false;
-  auto parseOperatorExpr(TokenKind end) -> std::unique_ptr<ExprWithoutBlock>;
   auto parseGroupedExpr(TokenKind end) -> std::unique_ptr<GroupedExpr>;
+  auto parseBinaryExpr(TokenKind end, i32 bp) -> std::unique_ptr<Expr>;
 
-  auto parseBinaryOp(TokenKind end) -> std::unique_ptr<ExprWithoutBlock> { return parseBinaryOp(end, -1); }
-  auto parseBinaryOp(TokenKind end, i32 ptp) -> std::unique_ptr<ExprWithoutBlock>;
+  // auto parseBinaryOp(TokenKind end) -> std::unique_ptr<ExprWithoutBlock> { return parseBinaryOp(end, -1); }
+  // auto parseBinaryOp(TokenKind end, i32 ptp) -> std::unique_ptr<ExprWithoutBlock>;
 
   auto parseStmts() -> std::vector<std::unique_ptr<Stmt>>;
-  auto parseStmt(TokenKind end) -> std::unique_ptr<Stmt>;
+  auto parseStmt() -> std::unique_ptr<Stmt>;
   auto parseLetStmt() -> std::unique_ptr<LetStmt>;
-  auto parseExprStmt(TokenKind end) -> std::unique_ptr<ExprStmt>;
+  auto parseExprStmt() -> std::unique_ptr<ExprStmt>;
 
-  auto expect(TokenKind type) -> bool;
-  auto consume(TokenKind type) -> bool;
-  void error();
+  auto expect1(TokenKind type, std::source_location loc) -> bool;
+  auto consume1(TokenKind type, std::source_location loc) -> bool;
+  void error(std::source_location& loc);
 };

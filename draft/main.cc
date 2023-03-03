@@ -5,10 +5,12 @@
 int main(int argc, char* argv[])
 {
   auto code = R"(
-let i = 0;
-
-while i < 10 {
-    i = i + 1;
+let i = 123;
+x = x + 1 * s / 2 -9%3;
+if a == 234 & 2 * 8 {
+  k = 123;
+} else if x == 3 {
+  b = 123;
 }
   )";
   llvm::SourceMgr mgr{};
@@ -16,10 +18,12 @@ while i < 10 {
   auto tokens = Lexer{code, engine}.tokenize();
   auto parser = Parser(tokens, engine);
   std::string str;
-  StringifyStmt stmt{str};
-  for (auto stmts = parser.parseStmts(); auto& st : stmts) {
-    stmt.visitStmt(st.get());
-    str += '\n';
+  auto stmts = parser.parseStmts();
+
+  StringifyStmt stringify{str};
+  for (auto& stmt : stmts) {
+    stringify.visitStmt(stmt.get());
   }
-  std::cout << str << '\n';
+
+  std::cout << stringify.str;
 }

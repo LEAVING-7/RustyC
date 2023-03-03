@@ -14,7 +14,7 @@ public:
       : mType(type), mLine(line), mColumn(column), mValue(std::forward<T>(value))
   {
   }
-  auto getType() const -> TokenKind { return this->mType; }
+  auto getKind() const -> TokenKind { return this->mType; }
   auto is(TokenKind type) const -> bool { return this->mType == type; }
   auto isOneOf(TokenKind t1, TokenKind t2) const -> bool { return is(t1) || is(t2); }
   template <typename... Ts>
@@ -41,7 +41,7 @@ inline auto ToString(std::variant<bool, i8, i16, i32, i64, u8, u16, u32, u64, fl
       []<typename T>(T const& v) {
         if constexpr (std::is_arithmetic_v<T>) {
           return std::to_string(v);
-        } else {
+        } else if (std::is_same_v<std::string, T>) {
           return v;
         }
       },
