@@ -12,14 +12,17 @@ target_include_directories(rusty_c
   PUBLIC ${LLVM_INCLUDE_DIR}
 )
 
+add_library(utils OBJECT ${CMAKE_CURRENT_LIST_DIR}/utils/utils.cpp)
+
 file(GLOB FRONTEND_FILES "frontend/*.cpp")
 
 add_library(frontend OBJECT 
   ${FRONTEND_FILES}
 )
-target_link_libraries(frontend PUBLIC ${llvm_libs})
+target_link_libraries(frontend PUBLIC ${llvm_libs} utils)
 
 target_include_directories(frontend 
   PUBLIC "${CMAKE_CURRENT_LIST_DIR}" 
   PUBLIC ${LLVM_INCLUDE_DIR}
 )
+

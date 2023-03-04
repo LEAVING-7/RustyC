@@ -12,8 +12,7 @@
 #include <memory>
 #include <variant>
 #include <array>
-#define __cpp_consteval
-#include <source_location>
+
 
 
 using u8 = ::std::uint8_t;

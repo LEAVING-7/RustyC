@@ -1,8 +1,6 @@
 #include "Parser.hpp"
+#include "utils/utils.hpp"
 #include <iostream>
-
-#define consume(tok) this->consume1(tok, std::source_location::current())
-#define expect(tok) this->expect1(tok, std::source_location::current())
 
 bool IsUnaryTok(TokenKind tok) { return UnaryExpr::MapKind(tok) != UnaryExpr::Kind::SIZE; }
 
@@ -51,18 +49,19 @@ auto Parser::parseBinaryExpr(TokenKind end, i32 bp) -> std::unique_ptr<Expr>
     left = parseLiteralExpr();
   } else if (auto kind = UnaryExpr::MapKind(tok); kind != UnaryExpr::Kind::SIZE) {
     auto [bp] = UnaryExpr::BindingPower(kind); // prefix
+    mCursor.skip();
     auto right = parseBinaryExpr(end, bp);
     left = std::make_unique<UnaryExpr>(kind, std::move(right));
   } else {
-    assert(0);
+    mDiags.report(SMLoc(), DiagId::ErrExpectedExpr);
   }
 
   while (!mCursor.peek().is(END) && mCursor.peek().getKind() != end) {
     auto tokKind = mCursor.peek().getKind();
     auto op = BinaryExpr::MapKind(tokKind);
     if (op == BinaryExpr::Kind::SIZE) {
-      assert(0);
-      break;
+      mDiags.report(SMLoc(), DiagId::ErrInvalidBinaryOp, TokenKindToString(tokKind));
+      return nullptr;
     }
     auto [bpl, bpr] = BinaryExpr::BindingPower(op);
     if (bpl < bp) {
@@ -95,10 +94,10 @@ auto Parser::parseStmt() -> std::unique_ptr<Stmt>
 auto Parser::parseLetStmt() -> std::unique_ptr<LetStmt>
 {
   mCursor.skip();
-  assert(expect(Identifier));
+  expect(Identifier);
   auto name = mCursor.peek().get<std::string>();
   mCursor.skip();
-  assert(consume(PunEq));
+  consume(PunEq);
   auto expr = parseExpr(PunSemi);
   mCursor.skip(); // skip semicolon
   return std::make_unique<LetStmt>(name, std::move(expr));
@@ -106,6 +105,7 @@ auto Parser::parseLetStmt() -> std::unique_ptr<LetStmt>
 
 auto Parser::parseExprWithBlock(TokenKind end) -> std::unique_ptr<ExprWithBlock>
 {
+  auto guard = mSema.enterScope();
   if (mCursor.peek().is(PunLBrace)) {
     return parseBlockExpr();
   } else if (mCursor.peek().isOneOf(Kwloop, Kwwhile)) {
@@ -113,12 +113,13 @@ auto Parser::parseExprWithBlock(TokenKind end) -> std::unique_ptr<ExprWithBlock>
   } else if (mCursor.peek().is(Kwif)) {
     return parseIfExpr();
   }
-  assert(0);
-  return {};
+  utils::Unreachable(utils::SrcLoc::current());
 }
 
 auto Parser::parseBlockExpr() -> std::unique_ptr<BlockExpr>
 {
+  auto guard = mSema.enterScope();
+
   consume(PunLBrace);
   std::vector<std::unique_ptr<Stmt>> stmts{};
   while (!mCursor.peek().is(PunRBrace)) { // TODO expr without block
@@ -129,11 +130,11 @@ auto Parser::parseBlockExpr() -> std::unique_ptr<BlockExpr>
 }
 auto Parser::parseIfExpr() -> std::unique_ptr<IfExpr>
 {
+  auto guard = mSema.enterScope();
+
   consume(Kwif);
   auto cond = parseExpr(PunLBrace);
-  consume(PunLBrace);
   auto block = parseBlockExpr();
-  consume(PunRBrace);
   auto else_ = std::unique_ptr<ExprWithBlock>{nullptr};
   if (mCursor.peek().is(Kwelse)) {
     mCursor.skip(); // skip 'else'
@@ -154,17 +155,18 @@ auto Parser::parseLoopExpr() -> std::unique_ptr<LoopExpr>
   } else if (mCursor.peek().is(Kwwhile)) {
     return parsePredicateLoopExpr();
   }
-  assert(0);
-  return {};
+  llvm::llvm_unreachable_internal();
 }
 auto Parser::parseInfiniteLoopExpr() -> std::unique_ptr<InfiniteLoopExpr>
 {
+  auto guard = mSema.enterScope();
   consume(Kwloop);
   auto body = parseBlockExpr();
   return std::make_unique<InfiniteLoopExpr>(std::move(body));
 }
 auto Parser::parsePredicateLoopExpr() -> std::unique_ptr<PredicateLoopExpr>
 {
+  auto guard = mSema.enterScope();
   consume(Kwwhile);
   auto cond = parseExpr(PunLBrace);
   auto body = parseBlockExpr();
@@ -180,26 +182,21 @@ auto Parser::parseStmts() -> std::vector<std::unique_ptr<Stmt>>
   return vec;
 }
 
-auto Parser::expect1(TokenKind type, std::source_location loc) -> bool
+auto Parser::expect(TokenKind type) -> bool
 {
   if (mCursor.peek().getKind() != type) {
-    error(loc);
+    mDiags.report(SMLoc(), DiagId::ErrUnexpected, TokenKindToString(type), TokenKindToString(mCursor.peek().getKind()));
     return false;
   }
   return true;
 }
-auto Parser::consume1(TokenKind type, std::source_location loc) -> bool
+auto Parser::consume(TokenKind type) -> bool
 {
   if (!expect(type)) {
-    error(loc);
     return false;
   }
   mCursor.skip();
   return true;
 }
 
-void Parser::error(std::source_location& loc)
-{
-  std::cerr << std::format("file: {}:{}:{}\nUnexpected: {}\n", loc.file_name(), loc.line(), loc.column(),
-                           mCursor.peek().toString());
-}
+void Parser::error() {}

@@ -148,6 +148,7 @@ void ExprVisitor::visitExprWithBlock(ExprWithBlock* expr)
     return assert(0);
   }
 }
+
 void ExprVisitor::visitLoopExpr(LoopExpr* expr)
 {
   switch (expr->mType) {
@@ -198,29 +199,29 @@ void StringifyExpr::visit(BinaryExpr* expr)
 {
   std::string c{};
   switch (expr->mKind) {
-#define KIND_TO_STRING(kind, str)                                                                                      \
+#define CASE(kind, str)                                                                                                \
   case BinaryExpr::Kind::kind:                                                                                         \
     c = #str;                                                                                                          \
     break;
 
-    KIND_TO_STRING(Add, +)
-    KIND_TO_STRING(Sub, -)
-    KIND_TO_STRING(Mul, *)
-    KIND_TO_STRING(Div, /)
-    KIND_TO_STRING(Rem, %)
-    KIND_TO_STRING(BitAnd, &)
-    KIND_TO_STRING(BitOr, |)
-    KIND_TO_STRING(BitXor, ^)
-    KIND_TO_STRING(Shl, <<)
-    KIND_TO_STRING(Shr, >>)
-    KIND_TO_STRING(Eq, ==)
-    KIND_TO_STRING(Ne, !=)
-    KIND_TO_STRING(Gt, >)
-    KIND_TO_STRING(Lt, <)
-    KIND_TO_STRING(Ge, >=)
-    KIND_TO_STRING(Le, <=)
-    KIND_TO_STRING(Assignment, =)
-#undef KIND_TO_STRING
+    CASE(Add, +)
+    CASE(Sub, -)
+    CASE(Mul, *)
+    CASE(Div, /)
+    CASE(Rem, %)
+    CASE(BitAnd, &)
+    CASE(BitOr, |)
+    CASE(BitXor, ^)
+    CASE(Shl, <<)
+    CASE(Shr, >>)
+    CASE(Eq, ==)
+    CASE(Ne, !=)
+    CASE(Gt, >)
+    CASE(Lt, <)
+    CASE(Ge, >=)
+    CASE(Le, <=)
+    CASE(Assignment, =)
+#undef CASE
   case BinaryExpr::Kind::SIZE:
     assert(0);
     break;

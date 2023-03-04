@@ -67,20 +67,7 @@ KEYWORD(if, "if")
 KEYWORD(else, "else")
 KEYWORD(while, "while")
 KEYWORD(for, "for")
-
-
-KEYWORD(i8, "i8")
-KEYWORD(i16, "i16")
-KEYWORD(i32, "i32")
-KEYWORD(i64, "i64")
-
-KEYWORD(u8, "u8")
-KEYWORD(u16, "u16")
-KEYWORD(u32, "u32")
-KEYWORD(u64, "u64")
-
-KEYWORD(f32, "f32")
-KEYWORD(f64, "f64")
+KEYWORD(break, "break")
 
 KEYWORD(bool, "bool")
 KEYWORD(void, "void")

@@ -6,6 +6,9 @@ DIAG(ErrInvalidIntegerSuffix, Error, "Invalid suffix '{0}' on integer constant")
 DIAG(ErrInvalidFloatSuffix, Error, "Invalid suffix '{0}' on float constant")
 DIAG(ErrInvalidFloatConstant, Error, "Invalid float constant")
 
+DIAG(ErrUnexpected, Error, "Expected {0} but found {1}")
+DIAG(ErrExpectedExpr, Error, "Expected expression")
+DIAG(ErrInvalidBinaryOp, Error, "Invalid binary operator {0}")
 
 DIAG(ErrSymDeclare, Error, "Symbol '{0}' already declared")
 DIAG(ErrSymUndefined, Error, "Symbol '{0}' undefined")

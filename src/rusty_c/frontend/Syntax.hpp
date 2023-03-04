@@ -187,98 +187,6 @@ public:
   static auto MapKind(TokenKind tok) -> UnaryExpr::Kind;
 };
 
-/* struct OperatorExpr : ExprWithoutBlock {
-public:
-  DEFINE_IDS(ArithmeticOrLogical, Negation, Comparison, Assignment);
-  IMPL_AS(OperatorExpr)
-
-public:
-  OperatorExpr(OperatorExpr::Type type) : ExprWithoutBlock(ExprWithoutBlock::Type::Operator), mType(type) {}
-  ~OperatorExpr() override = default;
-};
-
-struct ComparisonExpr final : OperatorExpr {
-public:
-  enum class Kind { Eq, Ne, Gt, Lt, Ge, Le, SIZE };
-
-public:
-  Kind const mKind;
-  std::unique_ptr<Expr> mLeft;
-  std::unique_ptr<Expr> mRight;
-
-public:
-  ComparisonExpr(Kind kind, std::unique_ptr<Expr> left, std::unique_ptr<Expr> right)
-      : OperatorExpr(OperatorExpr::Type::Comparison), mKind(kind), mLeft(std::move(left)), mRight(std::move(right))
-  {
-  }
-  ~ComparisonExpr() override final = default;
-
-  static auto MapOp(TokenKind token) -> Kind;
-  static auto GetPrec(Kind type) -> i32;
-
-  static_assert(TokenMap<ComparisonExpr>);
-};
-
-struct NegationExpr final : OperatorExpr {
-public:
-  enum class Kind { Neg, Not, SIZE };
-  static std::array<i32, 2> sPrecedence;
-
-public:
-  Kind const mKind;
-  std::unique_ptr<Expr> mRight;
-
-public:
-  NegationExpr(Kind kind, std::unique_ptr<Expr> expr)
-      : OperatorExpr(OperatorExpr::Type::Negation), mKind(kind), mRight(std::move(expr))
-  {
-  }
-  ~NegationExpr() override final = default;
-
-  static auto MapOp(TokenKind token) -> Kind;
-  static auto GetPrec(Kind type) -> i32;
-};
-
-struct ArithmeticOrLogicalExpr final : OperatorExpr {
-
-public:
-  enum class Kind { Add, Sub, Mul, Div, Rem, BitAnd, BitOr, BitXor, Shl, Shr, SIZE };
-  static std::map<Kind, i32> sPrecedence;
-
-public:
-  Kind const mKind;
-  std::unique_ptr<Expr> mLeft;
-  std::unique_ptr<Expr> mRight;
-
-public:
-  ArithmeticOrLogicalExpr(ArithmeticOrLogicalExpr::Kind type, std::unique_ptr<Expr> left, std::unique_ptr<Expr> right)
-      : OperatorExpr(OperatorExpr::Type::ArithmeticOrLogical), mKind(type), mLeft(std::move(left)),
-        mRight(std::move(right))
-  {
-  }
-  ~ArithmeticOrLogicalExpr() override final = default;
-
-  static auto MapOp(TokenKind token) -> Kind;
-  static auto GetPrec(Kind type) -> i32;
-
-  static_assert(TokenMap<ArithmeticOrLogicalExpr>);
-};
-
-struct AssignmentExpr final : OperatorExpr {
-public:
-  std::unique_ptr<Expr> mLeft;
-  std::unique_ptr<Expr> mRight;
-
-public:
-  AssignmentExpr(std::unique_ptr<Expr> left, std::unique_ptr<Expr> right)
-      : OperatorExpr(OperatorExpr::Type::Assignment), mLeft(std::move(left)), mRight(std::move(right))
-  {
-  }
-  ~AssignmentExpr() override final = default;
-
-  static auto GetPrec() -> i32 { return 2; }
-};
- */
 //===----------------------------------------------------------------------===//
 // ExprWithBlock
 //===----------------------------------------------------------------------===//
@@ -410,3 +318,7 @@ private:
     str += ';';
   };
 };
+
+
+#undef DEFINE_TYPES
+#undef DEFINE_KINDS

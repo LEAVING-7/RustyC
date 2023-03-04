@@ -59,7 +59,7 @@ public:
   auto tokenize() -> std::vector<Token>;
 
 private:
-  auto getLoc() -> SMLoc { return SMLoc::getFromPointer(mCursor.curr()); }
+  auto getLoc() -> SMLoc { return SMLoc{}; }
 
   void skipUntil(std::function<bool(char)>&& fn);
   auto nextToken() -> Token;

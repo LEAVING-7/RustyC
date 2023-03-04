@@ -8,10 +8,11 @@
 class Parser {
   Cursor<Token*> mCursor;
   Sema mSema;
+  DiagnosticsEngine& mDiags;
 
 public:
   Parser(std::vector<Token>& token, DiagnosticsEngine& diags)
-      : mCursor(token.data(), token.data() + token.size()), mSema(diags)
+      : mCursor(token.data(), token.data() + token.size()), mSema(diags), mDiags(diags)
   {
   }
 
@@ -30,15 +31,12 @@ public:
   auto parseGroupedExpr(TokenKind end) -> std::unique_ptr<GroupedExpr>;
   auto parseBinaryExpr(TokenKind end, i32 bp) -> std::unique_ptr<Expr>;
 
-  // auto parseBinaryOp(TokenKind end) -> std::unique_ptr<ExprWithoutBlock> { return parseBinaryOp(end, -1); }
-  // auto parseBinaryOp(TokenKind end, i32 ptp) -> std::unique_ptr<ExprWithoutBlock>;
-
   auto parseStmts() -> std::vector<std::unique_ptr<Stmt>>;
   auto parseStmt() -> std::unique_ptr<Stmt>;
   auto parseLetStmt() -> std::unique_ptr<LetStmt>;
   auto parseExprStmt() -> std::unique_ptr<ExprStmt>;
 
-  auto expect1(TokenKind type, std::source_location loc) -> bool;
-  auto consume1(TokenKind type, std::source_location loc) -> bool;
-  void error(std::source_location& loc);
+  auto expect(TokenKind type) -> bool;
+  auto consume(TokenKind type) -> bool;
+  void error();
 };

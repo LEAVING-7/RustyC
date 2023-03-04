@@ -1,7 +1,10 @@
 #include "Scope.hpp"
 
-auto Scopes::insert(LetStmt* stmt) -> bool { return mScopes.back().insert({stmt->mName, stmt}).second; }
-auto Scopes::lookup(std::string const& name) -> LetStmt*
+auto Scopes::insert(std::string const& name, TypeBase* type) -> bool
+{
+  return mScopes.back().insert({name, type}).second;
+}
+auto Scopes::lookup(std::string const& name) -> TypeBase*
 {
   assert(!mScopes.empty());
   auto currentScope = mScopes.size() - 1;
