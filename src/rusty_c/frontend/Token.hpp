@@ -2,7 +2,10 @@
 #include "TokenKind.hpp"
 #include <variant>
 class Token {
+public:
   using ValueType = std::variant<bool, i8, i16, i32, i64, u8, u16, u32, u64, float, double, std::string>;
+
+private:
   TokenKind mType;
   ValueType mValue;
   u32 mLine, mColumn;
@@ -30,20 +33,13 @@ public:
   {
     return std::get<T>(mValue);
   }
+  template <typename T>
+  decltype(auto) get() const
+  {
+    return std::get<T>(mValue);
+  }
 
   auto toString() -> std::string;
 };
 
-inline auto ToString(std::variant<bool, i8, i16, i32, i64, u8, u16, u32, u64, float, double, std::string> const& v)
-    -> std::string
-{
-  return std::visit(
-      []<typename T>(T const& v) {
-        if constexpr (std::is_arithmetic_v<T>) {
-          return std::to_string(v);
-        } else if (std::is_same_v<std::string, T>) {
-          return v;
-        }
-      },
-      v);
-}
+auto ToString(Token::ValueType const& v) -> std::string;

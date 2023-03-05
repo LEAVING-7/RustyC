@@ -1,18 +1,29 @@
 #pragma once
 
 #include "../Types.hpp"
-#include "frontend/Syntax.hpp"
+#include "Frontend/Syntax.hpp"
+#include <llvm/ADT/StringMap.h>
 #include <unordered_map>
 
-
+struct Scope {
+public:
+  std::unordered_map<std::string, std::unique_ptr<TypeBase>> identifiers;
+  std::unordered_map<std::string, Item*> items;
+  Scope() = default;
+  Scope(Scope&&) = default;
+  ~Scope() = default;
+};
 class Scopes {
-  std::vector<std::unordered_map<std::string, TypeBase*>> mScopes;
 
 public:
+  std::vector<Scope> mScopes;
   Scopes() = default;
-  auto insert(std::string const& name, TypeBase *type) -> bool;
-  auto lookup(std::string const& name) -> TypeBase*;
-  auto current() -> std::unordered_map<std::string, TypeBase*>& { return mScopes.back(); }
+  ~Scopes() = default;
+  auto insertIdentifier(std::string const& name, std::unique_ptr<TypeBase> type) -> bool;
+  auto lookupIdentifier(std::string const& name) -> TypeBase*;
+  auto insertItem(std::string const& name, Item* type) -> bool;
+  auto lookupItem(std::string const& name) -> Item*;
+  auto current() -> Scope& { return mScopes.back(); }
   void enterScope();
   void leaveScope();
 };

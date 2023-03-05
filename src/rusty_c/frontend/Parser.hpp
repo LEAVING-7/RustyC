@@ -7,35 +7,53 @@
 
 class Parser {
   Cursor<Token*> mCursor;
-  Sema mSema;
   DiagnosticsEngine& mDiags;
 
 public:
   Parser(std::vector<Token>& token, DiagnosticsEngine& diags)
-      : mCursor(token.data(), token.data() + token.size()), mSema(diags), mDiags(diags)
+      : mCursor(token.data(), token.data() + token.size()), mDiags(diags)
   {
   }
 
 public:
-  auto parseExpr(TokenKind end) -> std::unique_ptr<Expr>;
+  using PredT = bool(Token const&);
+  auto parseCrate() -> Crate;
 
-  auto parseExprWithBlock(TokenKind end) -> std::unique_ptr<ExprWithBlock>;
+  auto parseExpr(PredT pred) -> std::unique_ptr<Expr>;
+
+  auto parseExprWithBlock(PredT pred) -> std::unique_ptr<ExprWithBlock>;
   auto parseBlockExpr() -> std::unique_ptr<BlockExpr>;
   auto parseIfExpr() -> std::unique_ptr<IfExpr>;
   auto parseLoopExpr() -> std::unique_ptr<LoopExpr>;
   auto parseInfiniteLoopExpr() -> std::unique_ptr<InfiniteLoopExpr>;
   auto parsePredicateLoopExpr() -> std::unique_ptr<PredicateLoopExpr>;
 
-  auto parseExprWithoutBlock(TokenKind end) -> std::unique_ptr<Expr>;
+  auto parseExprWithoutBlock(PredT pred) -> std::unique_ptr<Expr>;
   auto parseLiteralExpr() -> std::unique_ptr<LiteralExpr>;
-  auto parseGroupedExpr(TokenKind end) -> std::unique_ptr<GroupedExpr>;
-  auto parseBinaryExpr(TokenKind end, i32 bp) -> std::unique_ptr<Expr>;
+  auto parseGroupedExpr(PredT pred) -> std::unique_ptr<GroupedExpr>;
+  auto parseBinaryExpr(PredT pred, i32 bp) -> std::unique_ptr<Expr>;
+  auto parseReturnExpr() -> std::unique_ptr<ReturnExpr>;
 
   auto parseStmts() -> std::vector<std::unique_ptr<Stmt>>;
-  auto parseStmt() -> std::unique_ptr<Stmt>;
-  auto parseLetStmt() -> std::unique_ptr<LetStmt>;
-  auto parseExprStmt() -> std::unique_ptr<ExprStmt>;
+  auto parseStmt(PredT pred = [](auto) { return true; }) -> std::unique_ptr<Stmt>;
 
+  auto isItemStart(Token const& tok) -> bool;
+  auto parseItem() -> std::unique_ptr<Item>;
+
+  auto parseFunctionItem() -> std::unique_ptr<FunctionItem>;
+  auto parseLetStmt() -> std::unique_ptr<LetStmt>;
+  auto parseExprStmt(PredT pred = [](Token const& tok) { return tok.is(PunSemi); }) -> std::unique_ptr<ExprStmt>;
+
+  // parse type
+  auto parseType() -> std::unique_ptr<TypeBase>;
+  auto parseFunctionType() -> std::unique_ptr<FunctionType>;
+  auto parseTupleType() -> std::unique_ptr<TupleType>;
+
+  auto skip() -> void { mCursor.skip(); };
+  auto skipIf(TokenKind type) -> void;
+  auto peek(i32 n = 0) -> Token const& { return mCursor.peek(n); };
+  auto skipAfter(std::function<bool(Token const&)>&& pred) -> void;
+  auto skipUntil(std::function<bool(Token const&)>&& pred) -> void;
   auto expect(TokenKind type) -> bool;
   auto consume(TokenKind type) -> bool;
   void error();

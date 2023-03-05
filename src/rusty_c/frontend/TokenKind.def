@@ -12,7 +12,8 @@
 
 #define _KEYWORD(x, y)
 
-TOK(NumberConstant)
+TOK(NumberLiteral)
+TOK(StringLiteral)
 TOK(Identifier)
 TOK(UNKNOWN)
 TOK(END)
@@ -61,6 +62,7 @@ PUNCT(Colon, ":")
 PUNCT(SQuote, "'")
 PUNCT(DQuote, "\"")
 
+KEYWORD(fn, "fn")
 KEYWORD(let, "let")
 KEYWORD(loop, "loop")
 KEYWORD(if, "if")
@@ -68,9 +70,7 @@ KEYWORD(else, "else")
 KEYWORD(while, "while")
 KEYWORD(for, "for")
 KEYWORD(break, "break")
-
-KEYWORD(bool, "bool")
-KEYWORD(void, "void")
+KEYWORD(return, "return")
 
 KEYWORD(true, "true")
 KEYWORD(false, "false")

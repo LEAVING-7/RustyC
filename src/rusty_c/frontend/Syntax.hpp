@@ -1,5 +1,6 @@
 #pragma once
 #include "Token.hpp"
+#include "Types.hpp"
 #include "common.hpp"
 
 #define IMPL_AS(Target)                                                                                                \
@@ -25,20 +26,22 @@ struct Node {
   Type const mType;
 
 #define DEFINE_KINDS(...)                                                                                              \
-  enum class Kind { __VA_ARGS__ __VA_OPT__(, ) SIZE };                                                                 \
+  enum class Kind { __VA_ARGS__, SIZE };                                                                 \
   Kind const mKind;
 
 struct Expr;
 
 struct Stmt : public Node {
 public:
-  DEFINE_TYPES(Item, Let, Expression);
+  DEFINE_TYPES(Let, Expression);
   IMPL_AS(Stmt);
 
 public:
   Stmt(Type type) : mType(type) {}
   ~Stmt() override = default;
 };
+
+struct BlockExpr;
 
 struct ExprStmt final : public Stmt {
 public:
@@ -53,19 +56,55 @@ struct LetStmt final : Stmt {
 public:
   std::string mName;
   std::unique_ptr<Expr> mExpr;
+  std::unique_ptr<TypeBase> mExpectType;
 
 public:
-  LetStmt(std::string const& name, std::unique_ptr<Expr> expr)
-      : Stmt(Stmt::Type::Let), mName(name), mExpr(std::move(expr))
+  LetStmt(std::string const& name, std::unique_ptr<TypeBase> expectType, std::unique_ptr<Expr> expr)
+      : Stmt(Stmt::Type::Let), mName(name), mExpr(std::move(expr)), mExpectType(std::move(expectType))
   {
   }
   ~LetStmt() override final = default;
 };
 
-struct StmtVisitor {
-  virtual void visitStmt(Stmt* stmt);
-  virtual void visit(ExprStmt* stmt) = 0;
-  virtual void visit(LetStmt* stmt) = 0;
+//===----------------------------------------------------------------------===//
+// Item
+//===----------------------------------------------------------------------===//
+
+struct Item : Node {
+public:
+  DEFINE_KINDS(Module, ExternCrate, UseDeclaration, Function, TypeAlias, Struct, Enumeration, Union, ConstantItem,
+               StaticItem, Trait, Implementation, ExternBlock);
+  IMPL_AS(Item);
+
+public:
+  Item(Kind kind) : mKind(kind) {}
+  ~Item() override = default;
+};
+
+struct FunctionItem final : public Item {
+public:
+  std::string mName;
+  std::vector<std::string> mParamNames;
+  std::unique_ptr<FunctionType> mFnType;
+  std::unique_ptr<BlockExpr> mBody;
+
+public:
+  FunctionItem(std::string const& name, std::vector<std::string>&& argNames, std::unique_ptr<FunctionType> fnType,
+               std::unique_ptr<BlockExpr> body)
+      : Item(Item::Kind::Function), mName(name), mParamNames(std::move(argNames)), mFnType(std::move(fnType)),
+        mBody(std::move(body))
+  {
+  }
+  ~FunctionItem() override = default;
+};
+
+struct Crate final {
+public:
+  std::vector<std::unique_ptr<Item>> mItems;
+
+public:
+  Crate(std::vector<std::unique_ptr<Item>> items) : mItems(std::move(items)) {}
+  ~Crate() = default;
 };
 
 //===----------------------------------------------------------------------===//
@@ -88,7 +127,7 @@ public:
 
 struct ExprWithoutBlock : Expr {
 public:
-  DEFINE_TYPES(Literal, Grouped, Operator);
+  DEFINE_TYPES(Literal, Grouped, Operator, Call, Return);
   IMPL_AS(ExprWithoutBlock);
 
 public:
@@ -107,7 +146,7 @@ public:
 
 struct LiteralExpr final : ExprWithoutBlock {
 public:
-  enum class Kind { Bool, I8, I16, I32, I64, U8, U16, U32, U64, F32, F64, String };
+  enum class Kind { Bool, I8, I16, I32, I64, U8, U16, U32, U64, F32, F64, String, Identifier };
   using ValueType = std::variant<bool, i8, i16, i32, i64, u8, u16, u32, u64, float, double, std::string>;
 
 public:
@@ -144,7 +183,7 @@ public:
   ~OperatorExpr() override = default;
 };
 
-struct BinaryExpr : OperatorExpr {
+struct BinaryExpr final : OperatorExpr {
 public:
   DEFINE_KINDS(
       // arithmetic and logical
@@ -169,7 +208,7 @@ public:
   static auto MapKind(TokenKind tok) -> BinaryExpr::Kind;
 };
 
-struct UnaryExpr : OperatorExpr {
+struct UnaryExpr final : OperatorExpr {
 public:
   DEFINE_KINDS(Neg, Not);
 
@@ -185,6 +224,28 @@ public:
 
   static auto BindingPower(UnaryExpr::Kind kind) -> std::tuple<i32>;
   static auto MapKind(TokenKind tok) -> UnaryExpr::Kind;
+};
+
+struct CallExpr final : ExprWithoutBlock {
+public:
+  std::string mCallee;
+  std::vector<std::unique_ptr<Expr>> mArgs;
+
+public:
+  CallExpr(std::string callee, std::vector<std::unique_ptr<Expr>>&& args)
+      : ExprWithoutBlock(ExprWithoutBlock::Type::Call), mCallee(std::move(callee)), mArgs(std::move(args))
+  {
+  }
+  ~CallExpr() override final = default;
+};
+
+struct ReturnExpr final : ExprWithoutBlock {
+public:
+  std::unique_ptr<Expr> mExpr;
+
+public:
+  ReturnExpr(std::unique_ptr<Expr> expr) : ExprWithoutBlock(ExprWithoutBlock::Type::Return), mExpr(std::move(expr)) {}
+  ~ReturnExpr() override final = default;
 };
 
 //===----------------------------------------------------------------------===//
@@ -204,11 +265,14 @@ public:
 struct BlockExpr final : ExprWithBlock {
 public:
   std::vector<std::unique_ptr<Stmt>> mStmts;
-  std::unique_ptr<ExprWithoutBlock> mReturn; // nullptr for none
+  std::vector<std::unique_ptr<Item>> mItems;
+  std::unique_ptr<Expr> mReturn; // nullptr for none
 
 public:
-  BlockExpr(std::vector<std::unique_ptr<Stmt>>&& stmts, std::unique_ptr<ExprWithoutBlock> ret)
-      : ExprWithBlock(ExprWithBlock::Type::Block), mStmts(std::move(stmts)), mReturn(std::move(ret))
+  BlockExpr(std::vector<std::unique_ptr<Stmt>>&& stmts, std::vector<std::unique_ptr<Item>>&& items,
+            std::unique_ptr<Expr> ret)
+      : ExprWithBlock(ExprWithBlock::Type::Block), mStmts(std::move(stmts)), mReturn(std::move(ret)),
+        mItems(std::move(items))
   {
   }
   ~BlockExpr() override final = default;
@@ -217,12 +281,12 @@ public:
 struct IfExpr final : ExprWithBlock {
 public:
   std::unique_ptr<Expr> mCond;
-  std::unique_ptr<BlockExpr> mIf;
+  std::unique_ptr<BlockExpr> mThen;
   std::unique_ptr<ExprWithBlock> mElse; // nullptr for none, {Block, If, IfLet} required
 
 public:
   IfExpr(std::unique_ptr<Expr> cond, std::unique_ptr<BlockExpr> _if, std::unique_ptr<ExprWithBlock> _else)
-      : ExprWithBlock(ExprWithBlock::Type::If), mCond(std::move(cond)), mIf(std::move(_if)), mElse(std::move(_else))
+      : ExprWithBlock(ExprWithBlock::Type::If), mCond(std::move(cond)), mThen(std::move(_if)), mElse(std::move(_else))
   {
   }
   ~IfExpr() override final = default;
@@ -260,6 +324,14 @@ public:
   ~PredicateLoopExpr() override final = default;
 };
 
+struct StmtVisitor {
+  virtual void visitStmt(Stmt* stmt);
+  virtual void visit(ExprStmt* stmt) = 0;
+  virtual void visit(LetStmt* stmt) = 0;
+  virtual void visitItem(Item* item);
+  virtual void visit(FunctionItem* item) = 0;
+};
+
 struct ExprVisitor {
   virtual void visitExpr(Expr* expr);
 
@@ -276,6 +348,8 @@ struct ExprVisitor {
   virtual void visit(IfExpr* expr) = 0;
   virtual void visit(InfiniteLoopExpr* expr) = 0;
   virtual void visit(PredicateLoopExpr* expr) = 0;
+  virtual void visit(CallExpr* expr) = 0;
+  virtual void visit(ReturnExpr* expr) = 0;
 };
 
 struct StringifyStmt;
@@ -296,7 +370,11 @@ private:
   void visit(IfExpr* expr) override;
   void visit(InfiniteLoopExpr* expr) override;
   void visit(PredicateLoopExpr* expr) override;
+
+  void visit(CallExpr* expr) override;
+  void visit(ReturnExpr* expr) override;
 };
+
 struct StringifyStmt : StmtVisitor {
   std::string& str;
   StringifyStmt(std::string& str) : mExprVisitor(str, *this), str(str) {}
@@ -304,21 +382,10 @@ struct StringifyStmt : StmtVisitor {
 private:
   StringifyExpr mExprVisitor;
 
-  void visit(ExprStmt* stmt) override
-  {
-    mExprVisitor.visitExpr(stmt->mExpr.get());
-    str += ';';
-  }
-  void visit(LetStmt* stmt) override
-  {
-    str += "let ";
-    str += stmt->mName;
-    str += '=';
-    mExprVisitor.visitExpr(stmt->mExpr.get());
-    str += ';';
-  };
+  void visit(ExprStmt* stmt) override;
+  void visit(LetStmt* stmt) override;
+  void visit(FunctionItem* item) override;
 };
-
 
 #undef DEFINE_TYPES
 #undef DEFINE_KINDS

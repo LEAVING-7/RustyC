@@ -42,28 +42,40 @@ auto Lexer::tokenize() -> std::vector<Token>
 
 auto Lexer::skipWhiteSpace()
 {
-  char ch = mCursor.peek();
+  char ch = peek();
   while (::isspace(ch) || ch == '\n') {
     switch (ch) {
     case '\n': {
       ++mLine;
-      mCursor.skip();
+      skip();
       mLineHead = mCursor.curr();
     } break;
     default: {
-      mCursor.skip();
+      skip();
     } break;
     }
-    ch = mCursor.peek();
+    ch = peek();
   }
+}
+
+auto Lexer::scanStringLiteral() -> Token
+{
+  auto start = mCursor.curr();
+  skip();
+  while (peek() != '"') {
+    skip();
+  }
+  skip();
+  std::string value(start, mCursor.curr());
+  return {mLine, mColumn, TokenKind::StringLiteral, value};
 }
 
 auto Lexer::scanIdentifier() -> Token
 {
   auto start = mCursor.curr();
-  mCursor.skip();
-  while (IsIdentifier(mCursor.peek()) || IsDecDigit(mCursor.peek())) {
-    mCursor.skip();
+  skip();
+  while (IsIdentifier(peek()) || IsDecDigit(peek())) {
+    skip();
   }
 
   std::string value(start, mCursor.curr());
@@ -73,9 +85,9 @@ auto Lexer::scanIdentifier() -> Token
     return {mLine, mColumn, TokenKind::Identifier, value};
   } else {
     if (iter->second == TokenKind::Kwtrue) {
-      return {mLine, mColumn, TokenKind::NumberConstant, true};
+      return {mLine, mColumn, TokenKind::NumberLiteral, true};
     } else if (iter->second == TokenKind::Kwfalse) {
-      return {mLine, mColumn, TokenKind::NumberConstant, false};
+      return {mLine, mColumn, TokenKind::NumberLiteral, false};
     } else [[likely]] { // keyword
       return {mLine, mColumn, iter->second, value};
     }
@@ -84,7 +96,7 @@ auto Lexer::scanIdentifier() -> Token
 
 auto Lexer::scanIntegerSuffix() -> Lexer::IntegerType
 {
-  if (char ch = mCursor.peek(); ch == 'i' || ch == 'u') {
+  if (char ch = peek(); ch == 'i' || ch == 'u') {
     auto start = mCursor.curr();
     std::string_view view{start, 3}; // what if not long enough
     if (view.starts_with("i8")) {
@@ -140,41 +152,41 @@ auto Lexer::scanInteger(i32 base) -> Token
   }
 
   if (hasPrefix) {
-    while (mCursor.peek() == '_') {
-      mCursor.skip();
+    while (peek() == '_') {
+      skip();
     }
   }
 
-  u64 value = CharToInt(mCursor.peek());
-  mCursor.skip();
-  while (IsNDigit(mCursor.peek(), base) || mCursor.peek() == '_') {
-    if (mCursor.peek() == '_') {
-      mCursor.skip();
+  u64 value = CharToInt(peek());
+  skip();
+  while (IsNDigit(peek(), base) || peek() == '_') {
+    if (peek() == '_') {
+      skip();
       continue;
     }
-    value = value * base + CharToInt(mCursor.peek());
-    mCursor.skip();
+    value = value * base + CharToInt(peek());
+    skip();
   }
   auto type = scanIntegerSuffix();
   switch (type) {
   case IntegerType::i8:
-    return {mLine, mColumn, TokenKind::NumberConstant, (i8)value};
+    return {mLine, mColumn, TokenKind::NumberLiteral, (i8)value};
   case IntegerType::i16:
-    return {mLine, mColumn, TokenKind::NumberConstant, (i16)value};
+    return {mLine, mColumn, TokenKind::NumberLiteral, (i16)value};
   case IntegerType::i32:
-    return {mLine, mColumn, TokenKind::NumberConstant, (i32)value};
+    return {mLine, mColumn, TokenKind::NumberLiteral, (i32)value};
   case IntegerType::i64:
-    return {mLine, mColumn, TokenKind::NumberConstant, (i64)value};
+    return {mLine, mColumn, TokenKind::NumberLiteral, (i64)value};
   case IntegerType::u8:
-    return {mLine, mColumn, TokenKind::NumberConstant, (u8)value};
+    return {mLine, mColumn, TokenKind::NumberLiteral, (u8)value};
   case IntegerType::u16:
-    return {mLine, mColumn, TokenKind::NumberConstant, (u16)value};
+    return {mLine, mColumn, TokenKind::NumberLiteral, (u16)value};
   case IntegerType::u32:
-    return {mLine, mColumn, TokenKind::NumberConstant, (u32)value};
+    return {mLine, mColumn, TokenKind::NumberLiteral, (u32)value};
   case IntegerType::u64:
-    return {mLine, mColumn, TokenKind::NumberConstant, (u64)value};
+    return {mLine, mColumn, TokenKind::NumberLiteral, (u64)value};
   case IntegerType::None: // default case i32
-    return {mLine, mColumn, TokenKind::NumberConstant, (i32)value};
+    return {mLine, mColumn, TokenKind::NumberLiteral, (i32)value};
     break;
   }
 }
@@ -191,21 +203,21 @@ auto Lexer::scanFloat() -> Token
 
   mCursor.skip(std::abs(start - end));
 
-  if (char ch = mCursor.peek(); ch == '_') {
+  if (char ch = peek(); ch == '_') {
     auto start = mCursor.curr();
     std::string_view view{start, 3};
     if (view.starts_with("f32")) {
       mCursor.skip(3);
-      return {mLine, mColumn, TokenKind::NumberConstant, (float)value};
+      return {mLine, mColumn, TokenKind::NumberLiteral, (float)value};
     } else if (view.starts_with("f64")) {
       mCursor.skip(3);
-      return {mLine, mColumn, TokenKind::NumberConstant, (double)value};
+      return {mLine, mColumn, TokenKind::NumberLiteral, (double)value};
     } else {
       skipUntil([](char c) { return !IsAlnum(c); });
       mDiags.report(getLoc(), DiagId::ErrInvalidFloatSuffix, std::string_view{start, mCursor.curr()});
     }
   }
-  return {mLine, mColumn, TokenKind::NumberConstant, (double)value};
+  return {mLine, mColumn, TokenKind::NumberLiteral, (double)value};
 }
 
 auto Lexer::scanNumber() -> Token
@@ -214,25 +226,25 @@ auto Lexer::scanNumber() -> Token
 
   i32 base = 10;
 
-  if (mCursor.peek() == '0') {
-    mCursor.skip();
-    if (mCursor.peek() == 'b') {
+  if (peek() == '0') {
+    skip();
+    if (peek() == 'b') {
       base = 2;
-      mCursor.skip();
-    } else if (mCursor.peek() == 'o') {
+      skip();
+    } else if (peek() == 'o') {
       base = 8;
-      mCursor.skip();
-    } else if (mCursor.peek() == 'x') {
+      skip();
+    } else if (peek() == 'x') {
       base = 16;
-      mCursor.skip();
+      skip();
     }
   }
 
-  while (IsNDigit(mCursor.peek(), base) || mCursor.peek() == '_') {
-    mCursor.skip();
+  while (IsNDigit(peek(), base) || peek() == '_') {
+    skip();
   }
 
-  if (char ch = mCursor.peek(); ch == '.' 
+  if (char ch = peek(); ch == '.' 
   /* || ch == 'E' || ch == 'e'
    */) {
     if (base == 8) {
@@ -251,7 +263,7 @@ auto Lexer::nextToken() -> Token
 {
   mColumn = mCursor.curr() - mLineHead + 1;
   skipWhiteSpace();
-  if (auto ch = mCursor.peek(); IsIdentifier(ch)) {
+  if (auto ch = peek(); IsIdentifier(ch)) {
     return scanIdentifier();
   } else if (IsDecDigit(ch)) {
     return scanNumber();
@@ -259,7 +271,7 @@ auto Lexer::nextToken() -> Token
     return scanPunct();
   } else {
     while (!mCursor.isEnd()) {
-      mCursor.skip();
+      skip();
     }
     return {mLine, mColumn, TokenKind::END};
   }
@@ -268,10 +280,10 @@ auto Lexer::nextToken() -> Token
 auto Lexer::scanPunct() -> Token
 {
   TokenKind type = TokenKind::END;
-  switch (auto ch = mCursor.peek(); ch) {
+  switch (auto ch = peek(); ch) {
   case '+': {
     type = TokenKind::PunPlus;
-    mCursor.skip();
+    skip();
   } break;
   case '-': {
     if (ch = mCursor.peek(1); ch == '>') {
@@ -279,20 +291,20 @@ auto Lexer::scanPunct() -> Token
       mCursor.skip(2);
     } else {
       type = TokenKind::PunMinus;
-      mCursor.skip();
+      skip();
     }
   } break;
   case '*': {
     type = TokenKind::PunStar;
-    mCursor.skip();
+    skip();
   } break;
   case '/': {
     type = TokenKind::PunSlash;
-    mCursor.skip();
+    skip();
   } break;
   case '%': {
     type = TokenKind::PunPercent;
-    mCursor.skip();
+    skip();
   } break;
   case '=': {
     if (ch = mCursor.peek(1); ch == '=') {
@@ -300,86 +312,86 @@ auto Lexer::scanPunct() -> Token
       mCursor.skip(2);
     } else {
       type = TokenKind::PunEq;
-      mCursor.skip();
+      skip();
     }
   } break;
   case '<': {
     if (ch = mCursor.peek(1); ch == '=') {
       type = TokenKind::PunLe;
-      mCursor.skip(), mCursor.skip();
+      skip(), skip();
     } else {
       type = TokenKind::PunLt;
-      mCursor.skip();
+      skip();
     }
 
   } break;
   case '>': {
     if (ch = mCursor.peek(1); ch == '=') {
       type = TokenKind::PunGe;
-      mCursor.skip(), mCursor.skip();
+      skip(), skip();
     } else {
       type = TokenKind::PunGt;
-      mCursor.skip();
+      skip();
     }
 
   } break;
   case ';': {
     type = TokenKind::PunSemi;
-    mCursor.skip();
+    skip();
 
   } break;
   case '!': {
     if (ch = mCursor.peek(1); ch == '=') {
       type = TokenKind::PunNe;
-      mCursor.skip(), mCursor.skip();
+      skip(), skip();
     } else {
       type = TokenKind::PunNot;
-      mCursor.skip();
+      skip();
     }
   } break;
   case '{': {
     type = TokenKind::PunLBrace;
-    mCursor.skip();
+    skip();
   } break;
   case '}': {
     type = TokenKind::PunRBrace;
-    mCursor.skip();
+    skip();
   } break;
   case '(': {
     type = TokenKind::PunLParen;
-    mCursor.skip();
+    skip();
   } break;
   case ')': {
     type = TokenKind::PunRParen;
-    mCursor.skip();
+    skip();
   } break;
   case '[': {
     type = TokenKind::PunLBrack;
-    mCursor.skip();
+    skip();
   } break;
   case ']': {
     type = TokenKind::PunRBrack;
-    mCursor.skip();
+    skip();
   } break;
   case ',': {
     type = TokenKind::PunComma;
-    mCursor.skip();
+    skip();
   } break;
   case ':': {
     type = TokenKind::PunColon;
-    mCursor.skip();
+    skip();
   } break;
   case '&': {
     type = TokenKind::PunAnd;
-    mCursor.skip();
+    skip();
   } break;
   case '\'': {
     type = TokenKind::PunSQuote;
-    mCursor.skip();
+    skip();
   } break;
   case '"': {
     type = TokenKind::PunDQuote;
-    mCursor.skip();
+    skip();
   } break;
   }
 
@@ -388,7 +400,7 @@ auto Lexer::scanPunct() -> Token
 
 void Lexer::skipUntil(std::function<bool(char)>&& pred)
 {
-  while (mCursor.isEnd() && pred(mCursor.peek())) {
-    mCursor.skip();
+  while (mCursor.isEnd() && pred(peek())) {
+    skip();
   }
 }

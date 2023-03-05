@@ -65,10 +65,14 @@ private:
   auto nextToken() -> Token;
   auto skipWhiteSpace();
 
+  auto scanStringLiteral() -> Token;
   auto scanPunct() -> Token;
   auto scanIntegerSuffix() -> IntegerType;
   auto scanIdentifier() -> Token;
   auto scanNumber() -> Token;
   auto scanFloat() -> Token;
   auto scanInteger(i32 base) -> Token;
+
+  auto skip() -> void { mCursor.skip(); }
+  auto peek() -> char { return mCursor.peek(); }
 };

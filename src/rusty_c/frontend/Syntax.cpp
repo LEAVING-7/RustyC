@@ -121,8 +121,14 @@ void ExprVisitor::visitExprWithoutBlock(ExprWithoutBlock* expr)
     return this->visit(expr->as<GroupedExpr>());
   case ExprWithoutBlock::Type::Operator:
     return visitOperatorExpr(expr->as<OperatorExpr>());
+  case ExprWithoutBlock::Type::Call:
+    return visit(expr->as<CallExpr>());
+  case ExprWithoutBlock::Type::Return:
+    return visit(expr->as<ReturnExpr>());
   }
+  utils::Unimplemented(utils::SrcLoc::current());
 }
+
 void ExprVisitor::visitOperatorExpr(OperatorExpr* expr)
 {
   switch (expr->mType) {
@@ -161,18 +167,35 @@ void ExprVisitor::visitLoopExpr(LoopExpr* expr)
 
 void StmtVisitor::visitStmt(Stmt* stmt)
 {
+  if (stmt == nullptr) {
+    return;
+  }
   switch (stmt->mType) {
-  case Stmt::Type::Item:
-    assert(0);
-    break;
   case Stmt::Type::Let:
     this->visit(stmt->as<LetStmt>());
     break;
   case Stmt::Type::Expression:
     this->visit(stmt->as<ExprStmt>());
     break;
+  default:
+    utils::Unreachable(utils::SrcLoc::current());
   }
 }
+
+void StmtVisitor::visitItem(Item* item)
+{
+  switch (item->mKind) {
+  case Item::Kind::Function:
+    this->visit(item->as<FunctionItem>());
+    break;
+  default:
+    utils::Unimplemented(utils::SrcLoc::current());
+  }
+}
+
+//===----------------------------------------------------------------------===//
+// StringifyExpr
+//===----------------------------------------------------------------------===//
 
 void StringifyExpr::visit(LiteralExpr* expr) { str += ToString(expr->mValue); }
 void StringifyExpr::visit(GroupedExpr* expr)
@@ -242,7 +265,7 @@ void StringifyExpr::visit(IfExpr* expr)
 {
   str += "if ";
   this->visitExpr(expr->mCond.get());
-  this->visit(expr->mIf.get());
+  this->visit(expr->mThen.get());
   if (expr->mElse != nullptr) {
     str += " else ";
     this->visitExprWithBlock(expr->mElse.get());
@@ -258,4 +281,57 @@ void StringifyExpr::visit(PredicateLoopExpr* expr)
   str += "while ";
   this->visitExpr(expr->mCond.get());
   this->visit(expr->mExpr.get());
+}
+
+void StringifyExpr::visit(CallExpr* expr)
+{
+  str += expr->mCallee;
+  str += '(';
+  for (i32 i = 0; i < expr->mArgs.size(); ++i) {
+    this->visitExpr(expr->mArgs[i].get());
+    if (i != expr->mArgs.size() - 1) {
+      str += ',';
+    }
+  }
+  str += ')';
+}
+
+void StringifyExpr::visit(ReturnExpr* expr)
+{
+  str += "return ";
+  this->visitExpr(expr->mExpr.get());
+}
+
+void StringifyStmt::visit(ExprStmt* stmt)
+{
+  mExprVisitor.visitExpr(stmt->mExpr.get());
+  str += ';';
+}
+void StringifyStmt::visit(LetStmt* stmt)
+{
+  str += "let ";
+  str += stmt->mName;
+  str += '=';
+  mExprVisitor.visitExpr(stmt->mExpr.get());
+  str += ';';
+};
+void StringifyStmt::visit(FunctionItem* item)
+{
+  str += "fn ";
+  str += item->mName;
+  str += '(';
+  for (i32 i = 0; i < item->mParamNames.size(); ++i) {
+    str += item->mParamNames[i];
+    str += ':';
+    str += TypeToString(item->mFnType->mParams[i].get());
+    if (i != item->mParamNames.size() - 1) {
+      str += ',';
+    }
+  }
+  str += ')';
+  if (item->mFnType->mRet) {
+    str += "->";
+    str += TypeToString(item->mFnType->mRet.get());
+  }
+  mExprVisitor.visitExpr(item->mBody.get());
 }
