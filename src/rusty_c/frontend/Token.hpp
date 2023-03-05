@@ -8,15 +8,17 @@ public:
 private:
   TokenKind mType;
   ValueType mValue;
-  u32 mLine, mColumn;
+
+  char const* mLoc;
 
 public:
-  Token(u32 line, u32 column, TokenKind type) : mLine(line), mColumn(column), mType(type) {}
+  Token(char const* loc, TokenKind type) : mType(type), mLoc(loc) {}
   template <typename T>
-  Token(u32 line, u32 column, TokenKind type, T&& value)
-      : mType(type), mLine(line), mColumn(column), mValue(std::forward<T>(value))
+  Token(char const* loc, TokenKind type, T&& value) : mType(type), mValue(std::forward<T>(value)), mLoc(loc)
   {
   }
+
+  auto getLoc() const -> char const* { return mLoc; }
   auto getKind() const -> TokenKind { return this->mType; }
   auto is(TokenKind type) const -> bool { return this->mType == type; }
   auto isOneOf(TokenKind t1, TokenKind t2) const -> bool { return is(t1) || is(t2); }

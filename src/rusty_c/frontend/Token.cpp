@@ -20,9 +20,5 @@ auto ToString(Token::ValueType const& v) -> std::string
 }
 auto Token::toString() -> std::string
 {
-  if (mType == TokenKind::Identifier || mType == TokenKind::NumberLiteral) {
-    return std::format("({}: {}): {}: {}", mLine, mColumn, TokenKindToString(mType), ToString(mValue));
-  } else {
-    return std::format("({}: {}): {}", mLine, mColumn, TokenKindToString(mType));
-  }
+  return "Not implemented yet.";
 }

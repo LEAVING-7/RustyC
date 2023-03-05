@@ -12,11 +12,15 @@ public:
   using value_type = decltype(*std::declval<Iter>());
 
 private:
-  Iter const mBegin;
-  Iter const mEnd;
+  Iter mBegin;
+  Iter mEnd;
   Iter mCurrent;
 
 public:
+  Cursor() = default;
+  Cursor(Cursor const&) = default;
+  Cursor& operator=(Cursor const&) = default;
+  Cursor(Cursor&&) = default;
   Cursor(Iter begin, Iter end) : mBegin(begin), mEnd(end), mCurrent(begin) {}
 
   auto isEnd() const -> bool { return mCurrent == mEnd; }
@@ -44,22 +48,24 @@ class Lexer {
 
 public:
   Cursor<char const*> mCursor;
-  char const* mLineHead;
-  u32 mLine;
-  u32 mColumn;
+
+  u32 mCurrBuffer = 0;
   DiagnosticsEngine& mDiags;
+  llvm::SourceMgr& mSourceMgr;
 
 public:
-  Lexer(std::string_view buffer, DiagnosticsEngine& diag)
-      : mCursor(buffer.data(), buffer.data() + buffer.size()), mLine(1), mColumn(0), mLineHead(buffer.data()),
-        mDiags(diag)
+  Lexer(llvm::SourceMgr& srcMgr, DiagnosticsEngine& diag)
+      : mSourceMgr(srcMgr), mDiags(diag), mCurrBuffer(srcMgr.getMainFileID())
   {
+    mCursor = Cursor(srcMgr.getMemoryBuffer(mCurrBuffer)->getBufferStart(),
+                     srcMgr.getMemoryBuffer(mCurrBuffer)->getBufferEnd());
   }
   ~Lexer() = default;
   auto tokenize() -> std::vector<Token>;
 
 private:
-  auto getLoc() -> SMLoc { return SMLoc{}; }
+  auto getBuffer() -> llvm::StringRef { return mSourceMgr.getMemoryBuffer(mCurrBuffer)->getBuffer(); }
+  auto getLoc() -> llvm::SMLoc { return llvm::SMLoc::getFromPointer(mCursor.curr()); }
 
   void skipUntil(std::function<bool(char)>&& fn);
   auto nextToken() -> Token;
@@ -73,6 +79,7 @@ private:
   auto scanFloat() -> Token;
   auto scanInteger(i32 base) -> Token;
 
+  auto curr() -> char const* { return mCursor.curr(); }
   auto skip() -> void { mCursor.skip(); }
   auto peek() -> char { return mCursor.peek(); }
 };

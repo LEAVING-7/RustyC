@@ -4,9 +4,6 @@
 
 bool IsUnaryTok(TokenKind tok) { return UnaryExpr::MapKind(tok) != UnaryExpr::Kind::SIZE; }
 
-#define GOTO_ERROR_IF(cond)                                                                                            \
-  if (cond)                                                                                                            \
-    goto ERROR;
 
 auto Parser::parseExprStmt(PredT pred) -> std::unique_ptr<ExprStmt>
 {
@@ -43,10 +40,10 @@ auto Parser::parseLiteralExpr() -> std::unique_ptr<LiteralExpr>
   auto const& tok = peek();
   skip();
   if (tok.is(Identifier)) {
-    return std::make_unique<LiteralExpr>(LiteralExpr::Kind::Identifier, tok.getValue());
+    return std::make_unique<LiteralExpr>(LiteralExpr::Kind::Identifier, tok.getValue(), tok.getLoc());
   } else {
     auto ty = static_cast<LiteralExpr::Kind>(tok.getValueIndex());
-    return std::make_unique<LiteralExpr>(ty, tok.getValue());
+    return std::make_unique<LiteralExpr>(ty, tok.getValue(), tok.getLoc());
   }
 }
 
@@ -63,6 +60,7 @@ auto Parser::parseBinaryExpr(PredT pred, i32 bp) -> std::unique_ptr<Expr>
     left = parseLiteralExpr();
   } else if (tok == Identifier) {
     if (peek(1).is(PunLParen)) { // parse function call expression
+      auto loc = currBufLoc();
       auto callee = peek().get<std::string>();
       skip();
       skip();
@@ -72,7 +70,7 @@ auto Parser::parseBinaryExpr(PredT pred, i32 bp) -> std::unique_ptr<Expr>
         skipIf(PunComma);
       }
       skip(); // skip RParen
-      left = std::make_unique<CallExpr>(callee, std::move(args));
+      left = std::make_unique<CallExpr>(callee, std::move(args), loc);
     } else {
       left = parseLiteralExpr();
     }
@@ -82,14 +80,15 @@ auto Parser::parseBinaryExpr(PredT pred, i32 bp) -> std::unique_ptr<Expr>
     auto right = parseBinaryExpr(pred, bp);
     left = std::make_unique<UnaryExpr>(kind, std::move(right));
   } else {
-    mDiags.report(SMLoc(), DiagId::ErrExpectedExpr);
+    mDiags.report(currSMLoc(), DiagId::ErrExpectedExpr);
   }
 
   while (!peek().is(END) && !pred(peek())) {
     auto tokKind = peek().getKind();
     auto op = BinaryExpr::MapKind(tokKind);
+    auto loc = currBufLoc();
     if (op == BinaryExpr::Kind::SIZE) {
-      mDiags.report(SMLoc(), DiagId::ErrInvalidBinaryOp, TokenKindToString(tokKind));
+      mDiags.report(currSMLoc(), DiagId::ErrInvalidBinaryOp, TokenKindToString(tokKind));
       return nullptr;
     }
     auto [bpl, bpr] = BinaryExpr::BindingPower(op);
@@ -98,17 +97,18 @@ auto Parser::parseBinaryExpr(PredT pred, i32 bp) -> std::unique_ptr<Expr>
     }
     skip();
     auto right = parseBinaryExpr(pred, bpr);
-    left = std::make_unique<BinaryExpr>(op, std::move(left), std::move(right));
+    left = std::make_unique<BinaryExpr>(op, std::move(left), std::move(right), loc);
   }
   return left;
 }
 
 auto Parser::parseGroupedExpr(PredT pred) -> std::unique_ptr<GroupedExpr>
 {
+  auto loc = currBufLoc();
   consume(PunLParen);
   auto expr = parseExpr([](auto v) { return v.is(PunRParen); });
   consume(PunRParen);
-  return std::make_unique<GroupedExpr>(std::move(expr));
+  return std::make_unique<GroupedExpr>(std::move(expr), loc);
 }
 
 auto Parser::isItemStart(Token const& tok) -> bool
@@ -147,6 +147,7 @@ auto Parser::parseStmt(PredT pred) -> std::unique_ptr<Stmt>
 
 auto Parser::parseLetStmt() -> std::unique_ptr<LetStmt>
 {
+  auto loc = currBufLoc();
   consume(Kwlet);
   expect(Identifier);
   auto name = peek().get<std::string>();
@@ -161,7 +162,7 @@ auto Parser::parseLetStmt() -> std::unique_ptr<LetStmt>
   consume(PunEq);
   auto expr = parseExpr([](auto v) { return v.is(PunSemi); });
   skip(); // skip semicolon
-  return std::make_unique<LetStmt>(name, std::move(expectType), std::move(expr));
+  return std::make_unique<LetStmt>(name, std::move(expectType), std::move(expr), loc);
 }
 
 auto Parser::parseExprWithBlock(PredT pred) -> std::unique_ptr<ExprWithBlock>
@@ -207,6 +208,7 @@ auto Parser::parseBlockExpr() -> std::unique_ptr<BlockExpr>
 }
 auto Parser::parseIfExpr() -> std::unique_ptr<IfExpr>
 {
+  auto loc = currBufLoc();
   consume(Kwif);
   auto cond = parseExpr([](auto v) { return v.is(PunLBrace); });
   auto block = parseBlockExpr();
@@ -221,7 +223,7 @@ auto Parser::parseIfExpr() -> std::unique_ptr<IfExpr>
       assert(0);
     }
   }
-  return std::make_unique<IfExpr>(std::move(cond), std::move(block), std::move(else_));
+  return std::make_unique<IfExpr>(std::move(cond), std::move(block), std::move(else_), loc);
 }
 auto Parser::parseLoopExpr() -> std::unique_ptr<LoopExpr>
 {
@@ -241,11 +243,11 @@ auto Parser::parseInfiniteLoopExpr() -> std::unique_ptr<InfiniteLoopExpr>
 }
 auto Parser::parsePredicateLoopExpr() -> std::unique_ptr<PredicateLoopExpr>
 {
-
+  auto loc = currBufLoc();
   consume(Kwwhile);
   auto cond = parseExpr([](auto v) { return v.is(PunLBrace); });
   auto body = parseBlockExpr();
-  return std::make_unique<PredicateLoopExpr>(std::move(cond), std::move(body));
+  return std::make_unique<PredicateLoopExpr>(std::move(cond), std::move(body), loc);
 }
 
 auto Parser::parseStmts() -> std::vector<std::unique_ptr<Stmt>>
@@ -262,6 +264,7 @@ auto Parser::parseFunctionItem() -> std::unique_ptr<FunctionItem>
   std::vector<std::string> paramNames{};
   std::vector<std::unique_ptr<TypeBase>> paramTypes{};
 
+  auto loc = currBufLoc();
   consume(Kwfn);
   expect(Identifier);
   auto identifier = peek().get<std::string>();
@@ -281,20 +284,21 @@ auto Parser::parseFunctionItem() -> std::unique_ptr<FunctionItem>
     auto body = parseBlockExpr();
     return std::make_unique<FunctionItem>(identifier, std::move(paramNames),
                                           std::make_unique<FunctionType>(std::move(paramTypes), std::move(retType)),
-                                          std::move(body));
+                                          std::move(body), loc);
   } else {
     // return unit type
     auto body = parseBlockExpr();
     return std::make_unique<FunctionItem>(identifier, std::move(paramNames),
-                                          std::make_unique<FunctionType>(std::move(paramTypes)), std::move(body));
+                                          std::make_unique<FunctionType>(std::move(paramTypes)), std::move(body), loc);
   }
 }
 
 auto Parser::parseReturnExpr() -> std::unique_ptr<ReturnExpr>
 {
+  auto loc = currBufLoc();
   consume(Kwreturn);
   auto expr = parseExpr([](auto v) { return v.is(PunSemi); });
-  return std::make_unique<ReturnExpr>(std::move(expr));
+  return std::make_unique<ReturnExpr>(std::move(expr), loc);
 }
 
 //===----------------------------------------------------------------------===//
@@ -355,7 +359,7 @@ auto Parser::parseFunctionType() -> std::unique_ptr<FunctionType>
 auto Parser::expect(TokenKind type) -> bool
 {
   if (peek().getKind() != type) {
-    mDiags.report(SMLoc(), DiagId::ErrUnexpected, TokenKindToString(type), TokenKindToString(peek().getKind()));
+    mDiags.report(currSMLoc(), DiagId::ErrUnexpected, TokenKindToString(type), TokenKindToString(peek().getKind()));
     return false;
   }
   return true;

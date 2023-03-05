@@ -29,5 +29,3 @@ public:
     mNumErrors += (kind == llvm::SourceMgr::DK_Error) ? 1 : 0;
   }
 };
-
-using SMLoc = llvm::SMLoc;

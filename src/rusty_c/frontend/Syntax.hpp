@@ -26,8 +26,18 @@ struct Node {
   Type const mType;
 
 #define DEFINE_KINDS(...)                                                                                              \
-  enum class Kind { __VA_ARGS__, SIZE };                                                                 \
+  enum class Kind { __VA_ARGS__, SIZE };                                                                               \
   Kind const mKind;
+
+#define DEFINE_LOC                                                                                                     \
+  char const* const mLoc;                                                                                              \
+  auto getLoc() const->char const*                                                                                     \
+  {                                                                                                                    \
+    return mLoc;                                                                                                       \
+  }
+
+#define LOC_PARAM , char const* loc
+#define LOC_INIT , mLoc(loc)
 
 struct Expr;
 
@@ -58,9 +68,10 @@ public:
   std::unique_ptr<Expr> mExpr;
   std::unique_ptr<TypeBase> mExpectType;
 
+  DEFINE_LOC
 public:
-  LetStmt(std::string const& name, std::unique_ptr<TypeBase> expectType, std::unique_ptr<Expr> expr)
-      : Stmt(Stmt::Type::Let), mName(name), mExpr(std::move(expr)), mExpectType(std::move(expectType))
+  LetStmt(std::string const& name, std::unique_ptr<TypeBase> expectType, std::unique_ptr<Expr> expr LOC_PARAM)
+      : Stmt(Stmt::Type::Let), mName(name), mExpr(std::move(expr)), mExpectType(std::move(expectType)) LOC_INIT
   {
   }
   ~LetStmt() override final = default;
@@ -88,11 +99,12 @@ public:
   std::unique_ptr<FunctionType> mFnType;
   std::unique_ptr<BlockExpr> mBody;
 
+  DEFINE_LOC
 public:
   FunctionItem(std::string const& name, std::vector<std::string>&& argNames, std::unique_ptr<FunctionType> fnType,
-               std::unique_ptr<BlockExpr> body)
+               std::unique_ptr<BlockExpr> body LOC_PARAM)
       : Item(Item::Kind::Function), mName(name), mParamNames(std::move(argNames)), mFnType(std::move(fnType)),
-        mBody(std::move(body))
+        mBody(std::move(body)) LOC_INIT
   {
   }
   ~FunctionItem() override = default;
@@ -138,9 +150,12 @@ public:
 struct GroupedExpr final : ExprWithoutBlock {
 public:
   std::unique_ptr<Expr> mExpr;
-
+  DEFINE_LOC
 public:
-  GroupedExpr(std::unique_ptr<Expr> expr) : ExprWithoutBlock(ExprWithoutBlock::Type::Grouped), mExpr(std::move(expr)) {}
+  GroupedExpr(std::unique_ptr<Expr> expr LOC_PARAM)
+      : ExprWithoutBlock(ExprWithoutBlock::Type::Grouped), mExpr(std::move(expr)) LOC_INIT
+  {
+  }
   ~GroupedExpr() override final = default;
 };
 
@@ -152,10 +167,10 @@ public:
 public:
   Kind const mKind;
   ValueType mValue;
-
+  DEFINE_LOC
 public:
-  LiteralExpr(Kind type, ValueType const& value)
-      : ExprWithoutBlock(ExprWithoutBlock::Type::Literal), mValue(value), mKind(type)
+  LiteralExpr(Kind type, ValueType const& value LOC_PARAM)
+      : ExprWithoutBlock(ExprWithoutBlock::Type::Literal), mValue(value), mKind(type) LOC_INIT
   {
   }
   ~LiteralExpr() override final = default;
@@ -193,13 +208,14 @@ public:
       // assignment
       Assignment);
 
+  DEFINE_LOC
 public:
   std::unique_ptr<Expr> mLeft;
   std::unique_ptr<Expr> mRight;
 
 public:
-  BinaryExpr(BinaryExpr::Kind kind, std::unique_ptr<Expr> left, std::unique_ptr<Expr> right)
-      : OperatorExpr(OperatorExpr::Type::Binary), mKind(kind), mLeft(std::move(left)), mRight(std::move(right))
+  BinaryExpr(BinaryExpr::Kind kind, std::unique_ptr<Expr> left, std::unique_ptr<Expr> right LOC_PARAM)
+      : OperatorExpr(OperatorExpr::Type::Binary), mKind(kind), mLeft(std::move(left)), mRight(std::move(right)) LOC_INIT
   {
   }
   ~BinaryExpr() override = default;
@@ -231,9 +247,10 @@ public:
   std::string mCallee;
   std::vector<std::unique_ptr<Expr>> mArgs;
 
+  DEFINE_LOC
 public:
-  CallExpr(std::string callee, std::vector<std::unique_ptr<Expr>>&& args)
-      : ExprWithoutBlock(ExprWithoutBlock::Type::Call), mCallee(std::move(callee)), mArgs(std::move(args))
+  CallExpr(std::string callee, std::vector<std::unique_ptr<Expr>>&& args LOC_PARAM)
+      : ExprWithoutBlock(ExprWithoutBlock::Type::Call), mCallee(std::move(callee)), mArgs(std::move(args)) LOC_INIT
   {
   }
   ~CallExpr() override final = default;
@@ -243,8 +260,12 @@ struct ReturnExpr final : ExprWithoutBlock {
 public:
   std::unique_ptr<Expr> mExpr;
 
+  DEFINE_LOC
 public:
-  ReturnExpr(std::unique_ptr<Expr> expr) : ExprWithoutBlock(ExprWithoutBlock::Type::Return), mExpr(std::move(expr)) {}
+  ReturnExpr(std::unique_ptr<Expr> expr LOC_PARAM)
+      : ExprWithoutBlock(ExprWithoutBlock::Type::Return), mExpr(std::move(expr)) LOC_INIT
+  {
+  }
   ~ReturnExpr() override final = default;
 };
 
@@ -284,9 +305,10 @@ public:
   std::unique_ptr<BlockExpr> mThen;
   std::unique_ptr<ExprWithBlock> mElse; // nullptr for none, {Block, If, IfLet} required
 
+  DEFINE_LOC 
 public:
-  IfExpr(std::unique_ptr<Expr> cond, std::unique_ptr<BlockExpr> _if, std::unique_ptr<ExprWithBlock> _else)
-      : ExprWithBlock(ExprWithBlock::Type::If), mCond(std::move(cond)), mThen(std::move(_if)), mElse(std::move(_else))
+  IfExpr(std::unique_ptr<Expr> cond, std::unique_ptr<BlockExpr> _if, std::unique_ptr<ExprWithBlock> _else LOC_PARAM)
+      : ExprWithBlock(ExprWithBlock::Type::If), mCond(std::move(cond)), mThen(std::move(_if)), mElse(std::move(_else)) LOC_INIT
   {
   }
   ~IfExpr() override final = default;
@@ -316,9 +338,10 @@ public:
   std::unique_ptr<Expr> mCond;
   std::unique_ptr<BlockExpr> mExpr;
 
+  DEFINE_LOC
 public:
-  PredicateLoopExpr(std::unique_ptr<Expr> cond, std::unique_ptr<BlockExpr> expr)
-      : LoopExpr(LoopExpr::Type::PredicateLoop), mCond(std::move(cond)), mExpr(std::move(expr))
+  PredicateLoopExpr(std::unique_ptr<Expr> cond, std::unique_ptr<BlockExpr> expr LOC_PARAM)
+      : LoopExpr(LoopExpr::Type::PredicateLoop), mCond(std::move(cond)), mExpr(std::move(expr)) LOC_INIT
   {
   }
   ~PredicateLoopExpr() override final = default;

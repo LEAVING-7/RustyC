@@ -46,9 +46,7 @@ auto Lexer::skipWhiteSpace()
   while (::isspace(ch) || ch == '\n') {
     switch (ch) {
     case '\n': {
-      ++mLine;
       skip();
-      mLineHead = mCursor.curr();
     } break;
     default: {
       skip();
@@ -67,7 +65,7 @@ auto Lexer::scanStringLiteral() -> Token
   }
   skip();
   std::string value(start, mCursor.curr());
-  return {mLine, mColumn, TokenKind::StringLiteral, value};
+  return {curr(), TokenKind::StringLiteral, value};
 }
 
 auto Lexer::scanIdentifier() -> Token
@@ -82,14 +80,14 @@ auto Lexer::scanIdentifier() -> Token
 
   auto iter = GetKwMap().find(value);
   if (iter == GetKwMap().end()) {
-    return {mLine, mColumn, TokenKind::Identifier, value};
+    return {curr(), TokenKind::Identifier, value};
   } else {
     if (iter->second == TokenKind::Kwtrue) {
-      return {mLine, mColumn, TokenKind::NumberLiteral, true};
+      return {curr(), TokenKind::NumberLiteral, true};
     } else if (iter->second == TokenKind::Kwfalse) {
-      return {mLine, mColumn, TokenKind::NumberLiteral, false};
+      return {curr(), TokenKind::NumberLiteral, false};
     } else [[likely]] { // keyword
-      return {mLine, mColumn, iter->second, value};
+      return {curr(), iter->second, value};
     }
   }
 }
@@ -170,23 +168,23 @@ auto Lexer::scanInteger(i32 base) -> Token
   auto type = scanIntegerSuffix();
   switch (type) {
   case IntegerType::i8:
-    return {mLine, mColumn, TokenKind::NumberLiteral, (i8)value};
+    return {curr(), TokenKind::NumberLiteral, (i8)value};
   case IntegerType::i16:
-    return {mLine, mColumn, TokenKind::NumberLiteral, (i16)value};
+    return {curr(), TokenKind::NumberLiteral, (i16)value};
   case IntegerType::i32:
-    return {mLine, mColumn, TokenKind::NumberLiteral, (i32)value};
+    return {curr(), TokenKind::NumberLiteral, (i32)value};
   case IntegerType::i64:
-    return {mLine, mColumn, TokenKind::NumberLiteral, (i64)value};
+    return {curr(), TokenKind::NumberLiteral, (i64)value};
   case IntegerType::u8:
-    return {mLine, mColumn, TokenKind::NumberLiteral, (u8)value};
+    return {curr(), TokenKind::NumberLiteral, (u8)value};
   case IntegerType::u16:
-    return {mLine, mColumn, TokenKind::NumberLiteral, (u16)value};
+    return {curr(), TokenKind::NumberLiteral, (u16)value};
   case IntegerType::u32:
-    return {mLine, mColumn, TokenKind::NumberLiteral, (u32)value};
+    return {curr(), TokenKind::NumberLiteral, (u32)value};
   case IntegerType::u64:
-    return {mLine, mColumn, TokenKind::NumberLiteral, (u64)value};
+    return {curr(), TokenKind::NumberLiteral, (u64)value};
   case IntegerType::None: // default case i32
-    return {mLine, mColumn, TokenKind::NumberLiteral, (i32)value};
+    return {curr(), TokenKind::NumberLiteral, (i32)value};
     break;
   }
 }
@@ -208,16 +206,16 @@ auto Lexer::scanFloat() -> Token
     std::string_view view{start, 3};
     if (view.starts_with("f32")) {
       mCursor.skip(3);
-      return {mLine, mColumn, TokenKind::NumberLiteral, (float)value};
+      return {curr(), TokenKind::NumberLiteral, (float)value};
     } else if (view.starts_with("f64")) {
       mCursor.skip(3);
-      return {mLine, mColumn, TokenKind::NumberLiteral, (double)value};
+      return {curr(), TokenKind::NumberLiteral, (double)value};
     } else {
       skipUntil([](char c) { return !IsAlnum(c); });
       mDiags.report(getLoc(), DiagId::ErrInvalidFloatSuffix, std::string_view{start, mCursor.curr()});
     }
   }
-  return {mLine, mColumn, TokenKind::NumberLiteral, (double)value};
+  return {curr(), TokenKind::NumberLiteral, (double)value};
 }
 
 auto Lexer::scanNumber() -> Token
@@ -261,7 +259,6 @@ auto Lexer::scanNumber() -> Token
 
 auto Lexer::nextToken() -> Token
 {
-  mColumn = mCursor.curr() - mLineHead + 1;
   skipWhiteSpace();
   if (auto ch = peek(); IsIdentifier(ch)) {
     return scanIdentifier();
@@ -273,7 +270,7 @@ auto Lexer::nextToken() -> Token
     while (!mCursor.isEnd()) {
       skip();
     }
-    return {mLine, mColumn, TokenKind::END};
+    return {curr(), TokenKind::END};
   }
 }
 
@@ -395,7 +392,7 @@ auto Lexer::scanPunct() -> Token
   } break;
   }
 
-  return {mLine, mColumn, type};
+  return {curr(), type};
 }
 
 void Lexer::skipUntil(std::function<bool(char)>&& pred)

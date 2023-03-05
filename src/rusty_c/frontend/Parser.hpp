@@ -49,6 +49,8 @@ public:
   auto parseFunctionType() -> std::unique_ptr<FunctionType>;
   auto parseTupleType() -> std::unique_ptr<TupleType>;
 
+  auto currSMLoc() -> llvm::SMLoc { return llvm::SMLoc::getFromPointer(currBufLoc()); }
+  auto currBufLoc() -> char const* { return mCursor.peek().getLoc(); }
   auto skip() -> void { mCursor.skip(); };
   auto skipIf(TokenKind type) -> void;
   auto peek(i32 n = 0) -> Token const& { return mCursor.peek(n); };

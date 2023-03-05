@@ -60,8 +60,8 @@ auto Sema::actOnIfExpr(IfExpr* expr) -> std::unique_ptr<TypeBase>
            expr->mElse->mType == ExprWithBlock::Type::IfLet);
     auto elseType = actOnExprWithBlock(expr->mElse.get());
     if (!TypeEquals(thenType.get(), elseType.get())) {
-      mDiags.report(SMLoc{}, DiagId::ErrIncompatibleTypes, "if else expression", TypeToString(thenType.get()),
-                    TypeToString(elseType.get()));
+      mDiags.report(llvm::SMLoc::getFromPointer(expr->mLoc), DiagId::ErrIncompatibleTypes, "if else expression",
+                    TypeToString(thenType.get()), TypeToString(elseType.get()));
     }
   }
   return thenType;
@@ -107,12 +107,12 @@ auto Sema::actOnCallExpr(CallExpr* expr) -> std::unique_ptr<TypeBase>
 {
   FunctionItem* fn = lookupItem(expr->mCallee)->as<FunctionItem>();
   if (fn == nullptr) {
-    mDiags.report(SMLoc{}, DiagId::ErrInvalidFunctionCall, std::format("undeclared function '{}'", expr->mCallee));
+    mDiags.report(llvm::SMLoc::getFromPointer(expr->getLoc()), DiagId::ErrInvalidFunctionCall, std::format("undeclared function '{}'", expr->mCallee));
     return std::make_unique<Unknown>();
   }
 
   if (fn->mParamNames.size() != expr->mArgs.size()) {
-    mDiags.report(SMLoc{}, DiagId::ErrInvalidFunctionCall,
+    mDiags.report(llvm::SMLoc::getFromPointer(expr->getLoc()), DiagId::ErrInvalidFunctionCall,
                   std::format("incompatible number of arguments, expected '{}' got '{}'", fn->mParamNames.size(),
                               expr->mArgs.size()));
     return TypeClone(fn->mFnType->mRet);
@@ -121,7 +121,7 @@ auto Sema::actOnCallExpr(CallExpr* expr) -> std::unique_ptr<TypeBase>
   for (size_t i = 0; i < fn->mParamNames.size(); ++i) {
     auto argType = actOnExpr(expr->mArgs[i].get());
     if (!TypeEquals(fn->mFnType->mParams[i].get(), argType.get())) {
-      mDiags.report(SMLoc{}, DiagId::ErrInvalidFunctionCall,
+      mDiags.report(llvm::SMLoc::getFromPointer(expr->getLoc()), DiagId::ErrInvalidFunctionCall,
                     "incompatible parameter type at {}, expected '{}' got '{}'", i,
                     TypeToString(fn->mFnType->mParams[i].get()), TypeToString(argType.get()));
     }
@@ -145,7 +145,7 @@ auto Sema::actOnBinaryExpr(BinaryExpr* expr) -> std::unique_ptr<TypeBase>
   auto lhsType = actOnExpr(expr->mLeft.get());
   auto rhsType = actOnExpr(expr->mRight.get());
   if (!TypeEquals(lhsType.get(), rhsType.get())) {
-    mDiags.report(SMLoc{}, DiagId::ErrIncompatibleTypes, "", TypeToString(lhsType.get()), "and",
+    mDiags.report(llvm::SMLoc::getFromPointer(expr->getLoc()), DiagId::ErrIncompatibleTypes, "", TypeToString(lhsType.get()), "and",
                   TypeToString(rhsType.get()));
   }
   // TODO: check if the operator is valid for the type
@@ -187,7 +187,7 @@ auto Sema::actOnLiteralExpr(LiteralExpr* expr) -> std::unique_ptr<TypeBase>
     if (identifierType == nullptr) {
       auto itemType = lookupItem(name);
       if (itemType == nullptr) {
-        mDiags.report(SMLoc{}, DiagId::ErrUndefinedSym, name);
+        mDiags.report(llvm::SMLoc::getFromPointer(expr->getLoc()), DiagId::ErrUndefinedSym, name);
         return std::make_unique<Unknown>();
       } else {
         if (itemType->mKind == Item::Kind::Function) {
@@ -212,7 +212,7 @@ auto Sema::actOnReturnExpr(ReturnExpr* expr) -> std::unique_ptr<TypeBase>
   auto exprType = actOnExpr(expr->mExpr.get());
   auto currFn = mFunctionStack.top();
   if (!TypeEquals(exprType.get(), currFn->mFnType->mRet.get())) {
-    mDiags.report(SMLoc{}, DiagId::ErrIncompatibleTypes, std::format("function '{}' return expression", currFn->mName),
+    mDiags.report(llvm::SMLoc::getFromPointer(expr->getLoc()), DiagId::ErrIncompatibleTypes, std::format("function '{}' return expression", currFn->mName),
                   TypeToString(exprType.get()), TypeToString(currFn->mFnType->mRet.get()));
   }
   return std::make_unique<Never>();
@@ -277,7 +277,7 @@ auto Sema::actOnFunctionItem(FunctionItem* item) -> void
     }
     auto retType = actOnBlockExpr(item->mBody.get());
     if (!TypeEquals(retType.get(), item->mFnType->mRet.get())) {
-      mDiags.report(SMLoc{}, DiagId::ErrIncompatibleTypes, std::format("function '{}' return type", item->mName),
+      mDiags.report(llvm::SMLoc::getFromPointer(item->getLoc()), DiagId::ErrIncompatibleTypes, std::format("function '{}' return type", item->mName),
                     TypeToString(item->mFnType->mRet.get()), TypeToString(retType.get()));
     }
   }
@@ -290,7 +290,7 @@ auto Sema::actOnLetStmt(LetStmt* stmt) -> void
   if (stmt->mExpectType) {
     auto expectedType = stmt->mExpectType.get();
     if (!TypeEquals(type.get(), expectedType)) {
-      mDiags.report(SMLoc(), DiagId::ErrIncompatibleTypes, "let statement", TypeToString(expectedType),
+      mDiags.report(llvm::SMLoc::getFromPointer(stmt->getLoc()), DiagId::ErrIncompatibleTypes, "let statement", TypeToString(expectedType),
                     TypeToString(type.get()));
     }
   }
