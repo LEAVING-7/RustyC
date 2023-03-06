@@ -107,14 +107,15 @@ auto Sema::actOnCallExpr(CallExpr* expr) -> std::unique_ptr<TypeBase>
 {
   FunctionItem* fn = lookupItem(expr->mCallee)->as<FunctionItem>();
   if (fn == nullptr) {
-    mDiags.report(llvm::SMLoc::getFromPointer(expr->getLoc()), DiagId::ErrInvalidFunctionCall, std::format("undeclared function '{}'", expr->mCallee));
+    mDiags.report(llvm::SMLoc::getFromPointer(expr->getLoc()), DiagId::ErrInvalidFunctionCall,
+                  utils::format("undeclared function '{}'", expr->mCallee));
     return std::make_unique<Unknown>();
   }
 
   if (fn->mParamNames.size() != expr->mArgs.size()) {
     mDiags.report(llvm::SMLoc::getFromPointer(expr->getLoc()), DiagId::ErrInvalidFunctionCall,
-                  std::format("incompatible number of arguments, expected '{}' got '{}'", fn->mParamNames.size(),
-                              expr->mArgs.size()));
+                  utils::format("incompatible number of arguments, expected '{}' got '{}'", fn->mParamNames.size(),
+                                expr->mArgs.size()));
     return TypeClone(fn->mFnType->mRet);
   }
 
@@ -145,8 +146,8 @@ auto Sema::actOnBinaryExpr(BinaryExpr* expr) -> std::unique_ptr<TypeBase>
   auto lhsType = actOnExpr(expr->mLeft.get());
   auto rhsType = actOnExpr(expr->mRight.get());
   if (!TypeEquals(lhsType.get(), rhsType.get())) {
-    mDiags.report(llvm::SMLoc::getFromPointer(expr->getLoc()), DiagId::ErrIncompatibleTypes, "", TypeToString(lhsType.get()), "and",
-                  TypeToString(rhsType.get()));
+    mDiags.report(llvm::SMLoc::getFromPointer(expr->getLoc()), DiagId::ErrIncompatibleTypes, "",
+                  TypeToString(lhsType.get()), "and", TypeToString(rhsType.get()));
   }
   // TODO: check if the operator is valid for the type
   return lhsType;
@@ -212,8 +213,9 @@ auto Sema::actOnReturnExpr(ReturnExpr* expr) -> std::unique_ptr<TypeBase>
   auto exprType = actOnExpr(expr->mExpr.get());
   auto currFn = mFunctionStack.top();
   if (!TypeEquals(exprType.get(), currFn->mFnType->mRet.get())) {
-    mDiags.report(llvm::SMLoc::getFromPointer(expr->getLoc()), DiagId::ErrIncompatibleTypes, std::format("function '{}' return expression", currFn->mName),
-                  TypeToString(exprType.get()), TypeToString(currFn->mFnType->mRet.get()));
+    mDiags.report(llvm::SMLoc::getFromPointer(expr->getLoc()), DiagId::ErrIncompatibleTypes,
+                  utils::format("function '{}' return expression", currFn->mName), TypeToString(exprType.get()),
+                  TypeToString(currFn->mFnType->mRet.get()));
   }
   return std::make_unique<Never>();
 }
@@ -277,8 +279,9 @@ auto Sema::actOnFunctionItem(FunctionItem* item) -> void
     }
     auto retType = actOnBlockExpr(item->mBody.get());
     if (!TypeEquals(retType.get(), item->mFnType->mRet.get())) {
-      mDiags.report(llvm::SMLoc::getFromPointer(item->getLoc()), DiagId::ErrIncompatibleTypes, std::format("function '{}' return type", item->mName),
-                    TypeToString(item->mFnType->mRet.get()), TypeToString(retType.get()));
+      mDiags.report(llvm::SMLoc::getFromPointer(item->getLoc()), DiagId::ErrIncompatibleTypes,
+                    utils::format("function '{}' return type", item->mName), TypeToString(item->mFnType->mRet.get()),
+                    TypeToString(retType.get()));
     }
   }
   mFunctionStack.pop();
@@ -290,8 +293,8 @@ auto Sema::actOnLetStmt(LetStmt* stmt) -> void
   if (stmt->mExpectType) {
     auto expectedType = stmt->mExpectType.get();
     if (!TypeEquals(type.get(), expectedType)) {
-      mDiags.report(llvm::SMLoc::getFromPointer(stmt->getLoc()), DiagId::ErrIncompatibleTypes, "let statement", TypeToString(expectedType),
-                    TypeToString(type.get()));
+      mDiags.report(llvm::SMLoc::getFromPointer(stmt->getLoc()), DiagId::ErrIncompatibleTypes, "let statement",
+                    TypeToString(expectedType), TypeToString(type.get()));
     }
   }
   insertIdentifier(stmt->mName, std::move(type));

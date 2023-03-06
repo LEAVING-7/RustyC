@@ -13,13 +13,15 @@ target_include_directories(rusty_c
 )
 
 add_library(utils OBJECT ${CMAKE_CURRENT_LIST_DIR}/utils/utils.cpp)
+target_link_libraries(utils PUBLIC fmt::fmt)
 
 file(GLOB FRONTEND_FILES "Frontend/*.cpp" "Frontend/Sema/*.cpp")
 
 add_library(frontend OBJECT 
   ${FRONTEND_FILES}
 )
-target_link_libraries(frontend PUBLIC ${llvm_libs} utils)
+
+target_link_libraries(frontend PUBLIC ${llvm_libs} utils )
 
 target_include_directories(frontend 
   PUBLIC "${CMAKE_CURRENT_LIST_DIR}" 

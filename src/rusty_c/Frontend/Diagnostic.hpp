@@ -1,5 +1,6 @@
 #pragma once
 #include "common.hpp"
+#include "utils/utils.hpp"
 
 #include "llvm/Support/SMLoc.h"
 #include "llvm/Support/SourceMgr.h"
@@ -23,7 +24,7 @@ public:
   template <typename... Args>
   void report(llvm::SMLoc loc, DiagId id, Args&&... args)
   {
-    std::string msg = std::vformat(GetDiagnosticText(id), std::make_format_args(std::forward<Args>(args)...));
+    std::string msg = utils::vformat(GetDiagnosticText(id), utils::make_format_args(std::forward<Args>(args)...));
     auto kind = GetDiagnosticKind(id);
     mSrcMgr.PrintMessage(loc, kind, msg);
     mNumErrors += (kind == llvm::SourceMgr::DK_Error) ? 1 : 0;

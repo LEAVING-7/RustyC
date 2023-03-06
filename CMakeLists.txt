@@ -1,17 +1,17 @@
-cmake_minimum_required(VERSION 3.23)
-project(rusty_c LANGUAGES CXX)
+cmake_minimum_required(VERSION 3.22.0)
+project(rusty_c LANGUAGES CXX C)
 
 set(CMAKE_CXX_STANDARD 20)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
-# set(CMAKE_CXX_COMPILER "D:\\MyPrograms\\VisualStudio2022\\VC\\Tools\\MSVC\\14.33.31629\\bin\\Hostx64\\x64\\cl.exe")
+# clang
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}")
 
-include(AddLLVM) 
-if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
-  FindLLVMAt("D:/llvm-sdk/msvcrt-dbg")
-else() 
-  FindLLVMAt("D:/llvm-sdk/msvcrt-release")
-endif()
+include(FetchExternal)
+
+include(FindLLVM) 
+
+find_package(LLVM REQUIRED CONFIG)
 
 
 add_subdirectory(src bin)

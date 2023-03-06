@@ -1,5 +1,0 @@
-macro(FindLLVMAt path_to_llvm)
-  set(LLVM_DIR ${path_to_llvm}/lib/cmake/llvm)
-  find_package(LLVM REQUIRED CONFIG)
-  list(APPEND CMAKE_MODULE_PATH ${LLVM_DIR})
-endmacro()

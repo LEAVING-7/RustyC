@@ -1,4 +1,4 @@
-#include "D:/llvm-sdk/msvcrt-dbg/include/llvm/Support/InitLLVM.h" // let clangd shut up
+#include "llvm/Support/InitLLVM.h"
 #include "llvm/Support/ExtensibleRTTI.h"
 #include "llvm/Support/InitLLVM.h"
 #include "llvm/Support/raw_ostream.h"

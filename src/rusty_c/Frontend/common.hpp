@@ -6,14 +6,11 @@
 #include <vector>
 #include <concepts>
 #include <span>
-#include <format>
 #include <cassert>
 #include <map>
 #include <memory>
 #include <variant>
 #include <array>
-
-
 
 using u8 = ::std::uint8_t;
 using u16 = ::std::uint16_t;
