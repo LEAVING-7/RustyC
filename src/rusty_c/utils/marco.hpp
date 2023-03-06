@@ -1,5 +1,6 @@
 #pragma once
 
+
 #define PP_CAT(a, b) PP_CAT_IMPL(a, b)
 #define PP_CAT_IMPL(a, b) a##b
 
@@ -66,17 +67,3 @@
   #_0, #_1, #_2, #_3, #_4, #_5, #_6, #_7, #_8, #_9, #_10, #_11, #_12, #_13, #_14, #_15, #_16, #_17, #_18
 #define __TO_STRING_20(_0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16, _17, _18, _19)       \
   #_0, #_1, #_2, #_3, #_4, #_5, #_6, #_7, #_8, #_9, #_10, #_11, #_12, #_13, #_14, #_15, #_16, #_17, #_18, #_19
-
-#include <type_traits>
-#define DEFINE_KINDS(...)                                                                                              \
-  enum class Kind { __VA_ARGS__, SIZE };                                                                               \
-  Kind const mKind;                                                                                                    \
-  auto ToString(Kind kind)->char const*                                                                                \
-  {                                                                                                                    \
-    static constexpr char const* literals[]{VA_ARGS_TO_STRING(__VA_ARGS__)};                                           \
-    return literals[static_cast<std::underlying_type_t<Kind>>(kind)];                                                  \
-  }
-
-struct F {
-  DEFINE_KINDS(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T);
-};

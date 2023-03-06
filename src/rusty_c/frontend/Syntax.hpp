@@ -11,6 +11,7 @@
     return static_cast<T*>(this);                                                                                      \
   }                                                                                                                    \
   Target() = delete;
+
 struct Node {
   Node() = default;
   virtual ~Node() = default;
@@ -23,11 +24,21 @@ struct Node {
 // make life easier
 #define DEFINE_TYPES(...)                                                                                              \
   enum class Type { __VA_ARGS__ };                                                                                     \
-  Type const mType;
+  Type const mType;                                                                                                    \
+  static auto ToString(Type ty)->char const*                                                                           \
+  {                                                                                                                    \
+    static constexpr char const* literals[]{VA_ARGS_TO_STRING(__VA_ARGS__)};                                           \
+    return literals[static_cast<std::underlying_type_t<Type>>(ty)];                                                    \
+  }
 
 #define DEFINE_KINDS(...)                                                                                              \
   enum class Kind { __VA_ARGS__, SIZE };                                                                               \
-  Kind const mKind;
+  Kind const mKind;                                                                                                    \
+  static auto ToString(Kind kind)->char const*                                                                         \
+  {                                                                                                                    \
+    static constexpr char const* literals[]{VA_ARGS_TO_STRING(__VA_ARGS__)};                                           \
+    return literals[static_cast<std::underlying_type_t<Kind>>(kind)];                                                  \
+  }
 
 #define DEFINE_LOC                                                                                                     \
   char const* const mLoc;                                                                                              \
@@ -200,13 +211,7 @@ public:
 
 struct BinaryExpr final : OperatorExpr {
 public:
-  DEFINE_KINDS(
-      // arithmetic and logical
-      Add, Sub, Mul, Div, Rem, BitAnd, BitOr, BitXor, Shl, Shr,
-      // comparison operator
-      Eq, Ne, Gt, Lt, Ge, Le,
-      // assignment
-      Assignment);
+  DEFINE_KINDS(Add, Sub, Mul, Div, Rem, BitAnd, BitOr, BitXor, Shl, Shr, Eq, Ne, Gt, Lt, Ge, Le, Assignment);
 
   DEFINE_LOC
 public:
@@ -305,10 +310,11 @@ public:
   std::unique_ptr<BlockExpr> mThen;
   std::unique_ptr<ExprWithBlock> mElse; // nullptr for none, {Block, If, IfLet} required
 
-  DEFINE_LOC 
+  DEFINE_LOC
 public:
   IfExpr(std::unique_ptr<Expr> cond, std::unique_ptr<BlockExpr> _if, std::unique_ptr<ExprWithBlock> _else LOC_PARAM)
-      : ExprWithBlock(ExprWithBlock::Type::If), mCond(std::move(cond)), mThen(std::move(_if)), mElse(std::move(_else)) LOC_INIT
+      : ExprWithBlock(ExprWithBlock::Type::If), mCond(std::move(cond)), mThen(std::move(_if)),
+        mElse(std::move(_else)) LOC_INIT
   {
   }
   ~IfExpr() override final = default;

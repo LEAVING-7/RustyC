@@ -15,6 +15,7 @@ using i64 = ::std::int64_t;
 #include <format>
 #include <iostream>
 #include <source_location>
+#include "marco.hpp"
 
 namespace utils {
 using SrcLoc = std::source_location;

@@ -11,7 +11,6 @@ if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
   FindLLVMAt("D:/llvm-sdk/msvcrt-dbg")
 else() 
   FindLLVMAt("D:/llvm-sdk/msvcrt-release")
-
 endif()
 
 
