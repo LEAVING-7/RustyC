@@ -29,4 +29,9 @@ public:
     mSrcMgr.PrintMessage(loc, kind, msg);
     mNumErrors += (kind == llvm::SourceMgr::DK_Error) ? 1 : 0;
   }
+  template <typename... Args>
+  void report(char const* loc, DiagId id, Args&&... args)
+  {
+    report(llvm::SMLoc::getFromPointer(loc), id, std::forward<Args>(args)...);
+  }
 };

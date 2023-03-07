@@ -124,7 +124,8 @@ auto Parser::parseItem() -> std::unique_ptr<Item>
     std::cout << peek(1).getKind() << '\n';
     return parseExternalBlockItem();
   }
-  utils::Unreachable(utils::SrcLoc::current());
+  mDiags.report(currSMLoc(), DiagId::ErrUnexpected, "fn or extern", TokenKindToString(peek().getKind()));
+  utils::Unreachable(utils::SrcLoc::current(), "current {}\n", TokenKindToString(peek().getKind()));
 }
 
 auto Parser::parseCrate() -> Crate
@@ -190,7 +191,7 @@ auto Parser::parseBlockExpr() -> std::unique_ptr<BlockExpr>
   std::unique_ptr<Expr> ret{nullptr};
 
   bool isItemEnd = false;
-
+  puts("a");
   while (!peek().is(PunRBrace)) { // TODO expr without block
     if (isItemStart(peek())) {
       items.push_back(parseItem());
@@ -201,6 +202,8 @@ auto Parser::parseBlockExpr() -> std::unique_ptr<BlockExpr>
     stmts.push_back(std::move(stmt));
     isItemEnd = false;
   }
+  puts("b");
+
   if (!peek(-1).is(PunSemi) && !isItemEnd) {
     auto back = std::move(stmts.back());
     stmts.pop_back();

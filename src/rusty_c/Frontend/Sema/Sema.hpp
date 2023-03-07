@@ -8,7 +8,11 @@ class Sema {
   DiagnosticsEngine& mDiags;
   Scopes mScopes;
 
-  std::stack<FunctionItem*> mFunctionStack;
+  struct FunctionProp {
+    FunctionItem* fn;
+    size_t loc; // location in scopes
+  };
+  std::stack<FunctionProp> mFunctionStack;
 
 public:
   Sema(DiagnosticsEngine& diags) : mDiags(diags) {}
@@ -16,7 +20,6 @@ public:
   auto actOnCrate(Crate const* crate) -> void;
 
   auto actOnExpr(Expr* expr) -> std::unique_ptr<TypeBase>;
-
   auto actOnExprWithBlock(ExprWithBlock* expr) -> std::unique_ptr<TypeBase>;
   auto actOnBlockExpr(BlockExpr* expr) -> std::unique_ptr<TypeBase>;
   auto actOnIfExpr(IfExpr* expr) -> std::unique_ptr<TypeBase>;
@@ -48,7 +51,12 @@ public:
     return mScopes.insertIdentifier(name, std::move(type));
   }
   auto insertItem(std::string const& name, Item* item) -> bool { return mScopes.insertItem(name, (item)); }
+  auto lookupIdentifier(std::string const& name) -> TypeBase*
+  {
+    return mScopes.lookupIdUntil(name, mFunctionStack.top().loc);
+  }
+  auto lookupItem(std::string const& name) -> Item* { return mScopes.lookupItemUntil(name, mFunctionStack.top().loc); }
 
-  auto lookupIdentifier(std::string const& name) -> TypeBase* { return mScopes.lookupIdentifier(name); }
-  auto lookupItem(std::string const& name) -> Item* { return mScopes.lookupItem(name); }
+  auto lookupIdUntil(std::string const& name, i32 until) -> TypeBase* { return mScopes.lookupIdUntil(name, until); }
+  auto lookupItemUntil(std::string const& name, i32 until) -> Item* { return mScopes.lookupItemUntil(name, until); }
 };

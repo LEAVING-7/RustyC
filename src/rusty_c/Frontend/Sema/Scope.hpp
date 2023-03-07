@@ -114,8 +114,16 @@ public:
   ~Scopes() = default;
   auto insertIdentifier(std::string const& name, std::unique_ptr<TypeBase> type) -> bool;
   auto lookupIdentifier(std::string const& name) -> TypeBase*;
+  auto lookupIdInCurr(std::string const& name) -> TypeBase*;
+  auto lookupIdUntil(std::string const& name, i32 until) -> TypeBase*;
+
   auto insertItem(std::string const& name, Item* type) -> bool;
   auto lookupItem(std::string const& name) -> Item*;
+  auto lookupItemInCurr(std::string const& name) -> Item*;
+  auto lookupItemUntil(std::string const& name, i32 until) -> Item*;
+
+  auto size() { return mScopes.size(); }
+
   auto current() -> Scope& { return mScopes.back(); }
   void enterScope()
   {
