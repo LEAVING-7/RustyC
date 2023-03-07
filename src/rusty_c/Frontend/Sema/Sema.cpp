@@ -243,13 +243,14 @@ auto Sema::actOnExpr(Expr* expr) -> std::unique_ptr<TypeBase>
   utils::Unreachable(utils::SrcLoc::current());
 }
 
-auto Sema::actOnItem(Item* expr) -> void
+auto Sema::actOnItem(Item* item) -> void
 {
-  switch (expr->mKind) {
+  switch (item->mKind) {
   case Item::Kind::Function:
-    return actOnFunctionItem(expr->as<FunctionItem>());
+    return actOnFunctionItem(item->as<FunctionItem>());
+  case Item::Kind::ExternBlock:
+    return actOnExternalBlockItem(item->as<ExternalBlockItem>());
   case Item::Kind::Module:
-  case Item::Kind::ExternCrate:
   case Item::Kind::UseDeclaration:
   case Item::Kind::TypeAlias:
   case Item::Kind::Struct:
@@ -259,7 +260,7 @@ auto Sema::actOnItem(Item* expr) -> void
   case Item::Kind::StaticItem:
   case Item::Kind::Trait:
   case Item::Kind::Implementation:
-  case Item::Kind::ExternBlock:
+  case Item::Kind::ExternCrate:
     utils::Unimplemented(utils::SrcLoc::current(), "Item type is not implemented");
   case Item::Kind::SIZE:
     utils::Unreachable(utils::SrcLoc::current());
@@ -285,6 +286,15 @@ auto Sema::actOnFunctionItem(FunctionItem* item) -> void
     }
   }
   mFunctionStack.pop();
+}
+
+auto Sema::actOnExternalBlockItem(ExternalBlockItem* expr) -> void
+{
+  for (auto& item : expr->mItems) {
+    if (item->isDeclaration()) {
+      insertItem(item->mName, item.get());
+    }
+  }
 }
 
 auto Sema::actOnLetStmt(LetStmt* stmt) -> void

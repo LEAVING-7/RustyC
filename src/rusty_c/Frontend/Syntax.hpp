@@ -108,7 +108,7 @@ public:
   std::string mName;
   std::vector<std::string> mParamNames;
   std::unique_ptr<FunctionType> mFnType;
-  std::unique_ptr<BlockExpr> mBody;
+  std::unique_ptr<BlockExpr> mBody; // if null, it's a declaration
 
   DEFINE_LOC
 public:
@@ -119,6 +119,20 @@ public:
   {
   }
   ~FunctionItem() override = default;
+  bool isDeclaration() const { return mBody == nullptr; }
+};
+
+struct ExternalBlockItem : public Item {
+public:
+  std::string mABI;
+  std::vector<std::unique_ptr<FunctionItem>> mItems; // TODO: static item or function item
+
+public:
+  ExternalBlockItem(std::string const& abi, std::vector<std::unique_ptr<FunctionItem>> items)
+      : Item(Item::Kind::ExternBlock), mABI(abi), mItems(std::move(items))
+  {
+  }
+  ~ExternalBlockItem() override = default;
 };
 
 struct Crate final {

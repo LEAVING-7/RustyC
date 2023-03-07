@@ -71,6 +71,7 @@ KEYWORD(while, "while")
 KEYWORD(for, "for")
 KEYWORD(break, "break")
 KEYWORD(return, "return")
+KEYWORD(extern, "extern")
 
 KEYWORD(true, "true")
 KEYWORD(false, "false")

@@ -15,7 +15,7 @@ target_include_directories(rusty_c
 add_library(utils OBJECT ${CMAKE_CURRENT_LIST_DIR}/utils/utils.cpp)
 target_link_libraries(utils PUBLIC fmt::fmt)
 
-file(GLOB FRONTEND_FILES "Frontend/*.cpp" "Frontend/Sema/*.cpp")
+file(GLOB FRONTEND_FILES "Frontend/*.cpp" "Frontend/Sema/*.cpp" "Frontend/CodeGen/*.cpp")
 
 add_library(frontend OBJECT 
   ${FRONTEND_FILES}

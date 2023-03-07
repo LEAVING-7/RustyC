@@ -36,13 +36,15 @@ public:
 
   auto parseStmts() -> std::vector<std::unique_ptr<Stmt>>;
   auto parseStmt(PredT pred = [](auto) { return true; }) -> std::unique_ptr<Stmt>;
+  auto parseLetStmt() -> std::unique_ptr<LetStmt>;
+  auto parseExprStmt(PredT pred = [](Token const& tok) { return tok.is(PunSemi); }) -> std::unique_ptr<ExprStmt>;
 
+  // parse item
   auto isItemStart(Token const& tok) -> bool;
   auto parseItem() -> std::unique_ptr<Item>;
 
   auto parseFunctionItem() -> std::unique_ptr<FunctionItem>;
-  auto parseLetStmt() -> std::unique_ptr<LetStmt>;
-  auto parseExprStmt(PredT pred = [](Token const& tok) { return tok.is(PunSemi); }) -> std::unique_ptr<ExprStmt>;
+  auto parseExternalBlockItem() -> std::unique_ptr<ExternalBlockItem>;
 
   // parse type
   auto parseType() -> std::unique_ptr<TypeBase>;

@@ -28,7 +28,7 @@ bool IsPunct(char c)
 {
   return c == '[' || c == ']' || c == '(' || c == ')' || c == '{' || c == '}' || c == '.' || c == '&' || c == '*' ||
          c == '+' || c == '-' || c == '~' || c == '!' || c == '/' || c == '%' || c == '<' || c == '>' || c == '^' ||
-         c == '|' || c == '?' || c == ':' || c == ';' || c == '=' || c == ',' || c == '\'' || c == '"';
+         c == '|' || c == '?' || c == ':' || c == ';' || c == '=' || c == ',' || c == '\'';
 }
 
 auto Lexer::tokenize() -> std::vector<Token>
@@ -58,8 +58,9 @@ auto Lexer::skipWhiteSpace()
 
 auto Lexer::scanStringLiteral() -> Token
 {
-  auto start = mCursor.curr();
+  assert(peek() == '"' && "not a string literal");
   skip();
+  auto start = mCursor.curr();
   while (peek() != '"') {
     skip();
   }
@@ -266,6 +267,8 @@ auto Lexer::nextToken() -> Token
     return scanNumber();
   } else if (IsPunct(ch)) {
     return scanPunct();
+  } else if (ch == '"') {
+    return scanStringLiteral();
   } else {
     while (!mCursor.isEnd()) {
       skip();
@@ -384,10 +387,6 @@ auto Lexer::scanPunct() -> Token
   } break;
   case '\'': {
     type = TokenKind::PunSQuote;
-    skip();
-  } break;
-  case '"': {
-    type = TokenKind::PunDQuote;
     skip();
   } break;
   }

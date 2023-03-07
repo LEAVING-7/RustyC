@@ -35,10 +35,3 @@ auto Scopes::lookupItem(std::string const& name) -> Item*
   return nullptr;
 };
 
-void Scopes::enterScope() { mScopes.push_back({}); }
-void Scopes::leaveScope()
-{
-  if (!mScopes.empty()) {
-    mScopes.pop_back();
-  }
-}

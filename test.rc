@@ -1,17 +1,26 @@
-fn kk(bar: i32) -> f64 {
-    1234.0
+extern "C" {
+    fn a() -> i32; 
 }
 
+fn kk(bar: i32) -> f64 {
+    1234.000000
+}
 fn ff() -> i32 {
     let x = 123;
-    let kkk = if x == 0 {
+    let kkk = if (x == 0) {
         0;
     } else {
         1;
     };
+
+    fn kkk() -> i32 {
+         kkk = 1234;
+        return 123;
+    }
+
+    let s = kkk;
     1
 }
-
-fn main() {
+fn main() -> () {
     ff();
 }

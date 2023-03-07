@@ -4,7 +4,6 @@
 
 bool IsUnaryTok(TokenKind tok) { return UnaryExpr::MapKind(tok) != UnaryExpr::Kind::SIZE; }
 
-
 auto Parser::parseExprStmt(PredT pred) -> std::unique_ptr<ExprStmt>
 {
   if (auto& tok = peek(); tok.isOneOf(PunLBrace, Kwif, Kwwhile, Kwloop)) {
@@ -113,13 +112,17 @@ auto Parser::parseGroupedExpr(PredT pred) -> std::unique_ptr<GroupedExpr>
 
 auto Parser::isItemStart(Token const& tok) -> bool
 {
-  return tok.is(Kwfn); // TODO: add more
+  return tok.isOneOf(Kwfn, Kwextern); // TODO: add more
 }
 
 auto Parser::parseItem() -> std::unique_ptr<Item>
 {
   if (peek().is(Kwfn)) {
     return parseFunctionItem();
+  }
+  if (peek().is(Kwextern) /* && peek(1).is(StringLiteral) && peek(2).is(PunLBrace) */) {
+    std::cout << peek(1).getKind() << '\n';
+    return parseExternalBlockItem();
   }
   utils::Unreachable(utils::SrcLoc::current());
 }
@@ -278,19 +281,41 @@ auto Parser::parseFunctionItem() -> std::unique_ptr<FunctionItem>
     paramTypes.push_back(parseType());
   }
   consume(PunRParen);
+
+  // parse return type
+  std::unique_ptr<TypeBase> retType = std::make_unique<TupleType>();
   if (peek().is(PunRArrow)) {
     skip();
-    auto retType = parseType();
+    retType = parseType();
+  }
+
+  // function declaration
+  if (peek().is(PunSemi)) {
+    skip();
+    return std::make_unique<FunctionItem>(identifier, std::move(paramNames),
+                                          std::make_unique<FunctionType>(std::move(paramTypes), std::move(retType)),
+                                          nullptr, loc);
+  } else {
     auto body = parseBlockExpr();
     return std::make_unique<FunctionItem>(identifier, std::move(paramNames),
                                           std::make_unique<FunctionType>(std::move(paramTypes), std::move(retType)),
                                           std::move(body), loc);
-  } else {
-    // return unit type
-    auto body = parseBlockExpr();
-    return std::make_unique<FunctionItem>(identifier, std::move(paramNames),
-                                          std::make_unique<FunctionType>(std::move(paramTypes)), std::move(body), loc);
   }
+}
+
+auto Parser::parseExternalBlockItem() -> std::unique_ptr<ExternalBlockItem>
+{
+  consume(Kwextern);
+  expect(StringLiteral);
+  auto abi = peek().get<std::string>();
+  skip();
+  consume(PunLBrace);
+  std::vector<std::unique_ptr<FunctionItem>> items{};
+  while (!peek().is(PunRBrace)) {
+    items.push_back(parseFunctionItem());
+  }
+  consume(PunRBrace);
+  return std::make_unique<ExternalBlockItem>(abi, std::move(items));
 }
 
 auto Parser::parseReturnExpr() -> std::unique_ptr<ReturnExpr>
